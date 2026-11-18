@@ -10,12 +10,6 @@
       <span class="store-version">CLIENTE</span>
     </div>
 
-    <label class="store-nav-search">
-      <span class="material-symbols-outlined">search</span>
-      <input aria-label="Buscar sección" placeholder="Buscar en la tienda..." [(ngModel)]="searchText" name="sideSearch" (keyup.enter)="onSearch()" />
-      <kbd>⌕</kbd>
-    </label>
-
     <nav class="store-nav" aria-label="Navegación principal">
       <p class="store-nav-label">TIENDA</p>
       <a routerLink="/" [class.store-nav-active]="isCatalogPage()" (click)="showMenu=false"><span class="material-symbols-outlined">space_dashboard</span>Catálogo</a>
@@ -54,7 +48,7 @@
         <button class="store-menu-button" aria-label="Abrir navegación" (click)="toggleMenu()"><span class="material-symbols-outlined">menu</span></button>
         <div class="store-breadcrumb"><span>RouteOS</span><span class="material-symbols-outlined">chevron_right</span><strong>{{pageLabel()}}</strong><span class="store-online-chip"><i></i> Tienda en línea</span></div>
       </div>
-      <form class="store-top-search" (ngSubmit)="onSearch()">
+      <form *ngIf="!isCatalogPage()" class="store-top-search" (ngSubmit)="onSearch()">
         <span class="material-symbols-outlined">search</span>
         <input [(ngModel)]="searchText" name="searchText" aria-label="Buscar productos" placeholder="Buscar productos, marcas y categorías" />
         <button type="submit" aria-label="Buscar"><span class="material-symbols-outlined">arrow_forward</span></button>
