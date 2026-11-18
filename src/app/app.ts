@@ -46,6 +46,9 @@ export class App implements OnDestroy {
     const path = this.router.url.split('?')[0];
     return path === '/' || path === '/productos';
   }
+  isOffersPage() {
+    return this.router.parseUrl(this.router.url).queryParams['soloOfertas'] === 'true';
+  }
   pageLabel() {
     const path = this.router.url.split('?')[0];
     if (path === '/' || path === '/productos') return 'Catálogo';

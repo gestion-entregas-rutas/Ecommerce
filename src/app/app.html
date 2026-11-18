@@ -12,8 +12,8 @@
 
     <nav class="store-nav" aria-label="Navegación principal">
       <p class="store-nav-label">TIENDA</p>
-      <a routerLink="/" [class.store-nav-active]="isCatalogPage()" (click)="showMenu=false"><span class="material-symbols-outlined">space_dashboard</span>Catálogo</a>
-      <a routerLink="/productos" [queryParams]="{soloOfertas: true}" (click)="showMenu=false"><span class="material-symbols-outlined">sell</span>Ofertas</a>
+      <a routerLink="/" [class.store-nav-active]="isCatalogPage() && !isOffersPage()" (click)="showMenu=false"><span class="material-symbols-outlined">space_dashboard</span>Catálogo</a>
+      <a routerLink="/productos" [queryParams]="{soloOfertas: true}" [class.store-nav-active]="isOffersPage()" (click)="showMenu=false"><span class="material-symbols-outlined">sell</span>Ofertas</a>
       <a routerLink="/carrito" routerLinkActive="store-nav-active" (click)="showMenu=false"><span class="material-symbols-outlined">shopping_bag</span>Mi carrito<span *ngIf="cart.count()>0" class="store-count">{{cart.count()}}</span></a>
 
       <p class="store-nav-label store-nav-label-spaced">MI CUENTA</p>
