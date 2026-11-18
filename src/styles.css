@@ -1,16 +1,16 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-system-background: #F2F2F7;
+  --color-system-background: #F5F6F9;
   --color-surface-container-lowest: #FFFFFF;
-  --color-surface-container-low: #f4f3f8;
+  --color-surface-container-low: #f6f7fa;
   --color-surface-glass-light: rgba(255, 255, 255, 0.72);
   --color-separator-hairline-light: #E5E5EA;
-  --color-primary: #0058bc;
-  --color-primary-container: #0070eb;
+  --color-primary: #087cf0;
+  --color-primary-container: #006cda;
   --color-on-primary: #ffffff;
-  --color-primary-fixed: #d8e2ff;
-  --color-on-primary-fixed-variant: #004493;
+  --color-primary-fixed: #e6f0ff;
+  --color-on-primary-fixed-variant: #0868c7;
   --color-status-delivered: #34C759;
   --color-status-in-transit: #FF9500;
   --color-status-routing: #5856D6;
@@ -62,8 +62,9 @@ html, body {
 }
 .surface-card {
   background: var(--color-surface-container-lowest);
-  border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  border: 1px solid #e8e9ee;
+  border-radius: 13px;
+  box-shadow: 0 2px 5px rgba(20,31,54,.035), 0 8px 22px rgba(20,31,54,.025);
 }
 .surface-subtle { background: var(--color-surface-container-low); border-radius: 12px; }
 .btn-primary {
@@ -109,3 +110,15 @@ html, body {
 .drawer-backdrop { background: rgba(242,242,247,.55); backdrop-filter: blur(12px); }
 .fade-in { animation: fadeIn .25s ease; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px);} to { opacity:1; transform: translateY(0);} }
+
+/* Shared polish for catalog, product, cart, checkout, orders and account screens. */
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+a { transition: color .16s ease; }
+.surface-card h1, .surface-card h2, .surface-card h3 { letter-spacing: -.02em; }
+.input-field { min-height: 40px; border-color: #e2e4ea; border-radius: 9px; background: #fff; }
+.input-field:focus { border-color: #86baff; box-shadow: 0 0 0 3px rgba(8,124,240,.12); }
+.btn-primary, .btn-secondary-soft, .btn-ghost { min-height: 36px; border-radius: 8px; }
+.btn-primary { box-shadow: 0 2px 5px rgba(8,124,240,.15); }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(8,124,240,.2); }
+.chip { font-size: 11px; }
+::selection { background: #d7e9ff; color: #064e9b; }

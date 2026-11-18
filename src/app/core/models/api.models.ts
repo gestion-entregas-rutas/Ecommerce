@@ -28,7 +28,9 @@ export interface UsuarioSesion {
 }
 
 export interface AuthResponse {
-  token: string;
+  /** Current backend contract uses accessToken; token remains for older deployments. */
+  accessToken?: string;
+  token?: string;
   usuario: UsuarioSesion;
   expiraEn?: string;
 }
