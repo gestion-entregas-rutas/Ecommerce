@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -125,7 +125,7 @@ export class ProductDetailPage implements OnInit {
   review = { calificacion: 5, comentario: '' };
   reviewMsg = ''; reviewErr = '';
 
-  constructor(private route: ActivatedRoute, private router: Router, private catalog: CatalogService, private cart: CartService, public auth: AuthService) {}
+  constructor(private route: ActivatedRoute, private router: Router, private catalog: CatalogService, private cart: CartService, public auth: AuthService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -134,8 +134,8 @@ export class ProductDetailPage implements OnInit {
     if (!id) { this.error = 'Producto no encontrado'; return; }
     this.loading = true;
     this.catalog.getProducto(id).subscribe({
-      next: (p) => { this.producto = p; this.selectedMedia = this.mediaList()[0] || null; this.loading = false; },
-      error: (e) => { this.error = e?.userMessage || 'No se pudo cargar el producto'; this.loading = false; },
+      next: (p) => { this.producto = p; this.selectedMedia = this.mediaList()[0] || null; this.loading = false; this.cdr.markForCheck(); },
+      error: (e) => { this.error = e?.userMessage || 'No se pudo cargar el producto'; this.loading = false; this.cdr.markForCheck(); },
     });
   }
 
