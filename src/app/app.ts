@@ -1,5 +1,5 @@
 import { Component, OnDestroy, signal } from '@angular/core';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgIf } from '@angular/common';
 import { AuthService } from './core/services/auth.service';
@@ -10,7 +10,7 @@ import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, FormsModule, NgIf],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, NgIf],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
@@ -42,5 +42,23 @@ export class App implements OnDestroy {
   }
 
   currentUrl() { return this.router.url; }
+  isCatalogPage() {
+    const path = this.router.url.split('?')[0];
+    return path === '/' || path === '/productos';
+  }
+  isOffersPage() {
+    return this.router.parseUrl(this.router.url).queryParams['soloOfertas'] === 'true';
+  }
+  pageLabel() {
+    const path = this.router.url.split('?')[0];
+    if (path === '/' || path === '/productos') return 'Catálogo';
+    if (path.startsWith('/producto/')) return 'Detalle del producto';
+    if (path === '/carrito') return 'Mi carrito';
+    if (path === '/checkout') return 'Finalizar compra';
+    if (path === '/mis-pedidos') return 'Mis pedidos';
+    if (path === '/registro') return 'Crear cuenta';
+    if (path === '/login') return 'Iniciar sesión';
+    return 'Tienda';
+  }
   logout() { this.auth.logout(false); this.cart.load().subscribe({ error: () => {} }); this.router.navigateByUrl('/'); }
 }

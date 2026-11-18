@@ -1,66 +1,66 @@
-<div class="min-h-screen bg-system-background text-on-surface font-body-md">
-  <header class="glass-topbar sticky top-0 z-50 h-14">
-    <div class="page-shell flex h-14 items-center justify-between gap-4">
-      <div class="flex items-center gap-3 min-w-0">
-        <a routerLink="/" class="flex items-center gap-2 shrink-0">
-          <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-on-primary"><span class="material-symbols-outlined text-[18px]">storefront</span></span>
-          <span class="font-title-md tracking-tight hidden sm:block">Tienda</span>
-        </a>
-        <button class="btn-ghost !py-1.5 !px-3 !rounded-lg !font-medium" (click)="toggleMenu()">
-          <span class="material-symbols-outlined text-[18px]">menu</span>
-          <span class="hidden md:inline">Categorías</span>
-        </button>
-      </div>
+<div class="store-layout min-h-screen text-on-surface font-body-md">
+  <button *ngIf="showMenu" class="store-backdrop" aria-label="Cerrar navegación" (click)="showMenu=false"></button>
 
-      <form class="hidden md:flex flex-1 max-w-2xl" (ngSubmit)="onSearch()">
-        <div class="relative w-full">
-          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-on-surface-variant">search</span>
-          <input class="input-field !pl-10 !py-2 !rounded-lg !bg-surface-container-low !border-transparent focus:!bg-white" [(ngModel)]="searchText" name="searchText" placeholder="Buscar productos, marcas y categorías" />
-        </div>
+  <aside class="store-sidebar" [class.store-sidebar-open]="showMenu">
+    <div class="store-brand">
+      <a routerLink="/" (click)="showMenu=false" class="store-brand-link">
+        <span class="store-brand-mark"><span class="material-symbols-outlined">storefront</span></span>
+        <span><strong>RouteOS</strong><small>TIENDA ONLINE</small></span>
+      </a>
+      <span class="store-version">CLIENTE</span>
+    </div>
+
+    <nav class="store-nav" aria-label="Navegación principal">
+      <p class="store-nav-label">TIENDA</p>
+      <a routerLink="/" [class.store-nav-active]="isCatalogPage() && !isOffersPage()" (click)="showMenu=false"><span class="material-symbols-outlined">space_dashboard</span>Catálogo</a>
+      <a routerLink="/productos" [queryParams]="{soloOfertas: true}" [class.store-nav-active]="isOffersPage()" (click)="showMenu=false"><span class="material-symbols-outlined">sell</span>Ofertas</a>
+      <a routerLink="/carrito" routerLinkActive="store-nav-active" (click)="showMenu=false"><span class="material-symbols-outlined">shopping_bag</span>Mi carrito<span *ngIf="cart.count()>0" class="store-count">{{cart.count()}}</span></a>
+
+      <p class="store-nav-label store-nav-label-spaced">MI CUENTA</p>
+      <a routerLink="/mis-pedidos" routerLinkActive="store-nav-active" (click)="showMenu=false"><span class="material-symbols-outlined">receipt_long</span>Mis pedidos</a>
+      <a *ngIf="!auth.isAuthenticated(); else accountShortcut" [routerLink]="['/login']" [queryParams]="{returnUrl: currentUrl()}" routerLinkActive="store-nav-active" (click)="showMenu=false"><span class="material-symbols-outlined">person</span>Ingresar</a>
+      <ng-template #accountShortcut><a routerLink="/" (click)="showMenu=false"><span class="material-symbols-outlined">person</span>Mi cuenta</a></ng-template>
+
+      <div class="store-category-heading">
+        <p class="store-nav-label">DEPARTAMENTOS</p>
+        <a routerLink="/productos" aria-label="Ver todos los departamentos" (click)="showMenu=false">Ver todos</a>
+      </div>
+      <div class="store-departments">
+        @for (d of departments(); track d.id) {
+          <a [routerLink]="['/productos']" [queryParams]="{categoriaId: d.id}" (click)="showMenu=false">{{d.nombre}}</a>
+        }
+      </div>
+    </nav>
+
+    <div class="store-sidebar-footer">
+      <div class="store-support-pill"><span></span><div><strong>Compra protegida</strong><small>Atención para clientes</small></div></div>
+      <div class="store-user-card">
+        <span class="store-avatar">{{auth.isAuthenticated() ? (auth.user()?.nombreCompleto?.charAt(0) || 'C') : 'C'}}</span>
+        <div class="store-user-copy"><strong>{{auth.user()?.nombreCompleto || 'Cliente invitado'}}</strong><small>{{auth.isAuthenticated() ? 'Cuenta activa' : 'Explora la tienda'}}</small></div>
+        <button *ngIf="auth.isAuthenticated()" (click)="logout()" aria-label="Cerrar sesión" title="Cerrar sesión"><span class="material-symbols-outlined">logout</span></button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="store-main-column">
+    <header class="store-topbar">
+      <div class="store-topbar-leading">
+        <button class="store-menu-button" aria-label="Abrir navegación" (click)="toggleMenu()"><span class="material-symbols-outlined">menu</span></button>
+        <div class="store-breadcrumb"><span>RouteOS</span><span class="material-symbols-outlined">chevron_right</span><strong>{{pageLabel()}}</strong><span class="store-online-chip"><i></i> Tienda en línea</span></div>
+      </div>
+      <form *ngIf="!isCatalogPage()" class="store-top-search" (ngSubmit)="onSearch()">
+        <span class="material-symbols-outlined">search</span>
+        <input [(ngModel)]="searchText" name="searchText" aria-label="Buscar productos" placeholder="Buscar productos, marcas y categorías" />
+        <button type="submit" aria-label="Buscar"><span class="material-symbols-outlined">arrow_forward</span></button>
       </form>
-
-      <div class="flex items-center gap-1 sm:gap-2 shrink-0">
-        <a routerLink="/mis-pedidos" class="hidden sm:inline-flex btn-ghost !border-transparent !bg-transparent hover:!bg-black/5 !px-2.5 !py-1.5">
-          <span class="material-symbols-outlined text-[18px]">receipt_long</span><span class="font-label-md">Mis pedidos</span>
-        </a>
-        <a *ngIf="!auth.isAuthenticated(); else acc" [routerLink]="['/login']" [queryParams]="{returnUrl: currentUrl()}" class="btn-ghost !border-transparent !bg-transparent hover:!bg-black/5 !px-2.5 !py-1.5">
-          <span class="material-symbols-outlined text-[18px]">person</span><span class="hidden sm:inline font-label-md">Ingresar</span>
-        </a>
-        <ng-template #acc>
-          <div class="hidden sm:flex items-center gap-2">
-            <span class="font-label-md text-on-surface-variant">Hola, {{ auth.user()?.nombreCompleto?.split(' ')?.[0] || 'Cliente' }}</span>
-            <button class="text-primary font-label-md" (click)="logout()">Salir</button>
-          </div>
-        </ng-template>
-        <a routerLink="/carrito" class="relative btn-primary !py-1.5 !px-3 !rounded-lg">
-          <span class="material-symbols-outlined text-[18px]">shopping_bag</span>
-          <span class="hidden sm:inline">Carrito</span>
-          <span *ngIf="cart.count()>0" class="tabular-nums inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-white text-primary text-[11px] font-semibold px-1">{{ cart.count() }}</span>
-        </a>
+      <div class="store-top-actions">
+        <a routerLink="/carrito" class="store-top-cart"><span class="material-symbols-outlined">shopping_cart</span><span>Carrito</span><b *ngIf="cart.count()>0">{{cart.count()}}</b></a>
       </div>
-    </div>
+    </header>
 
-    <div *ngIf="showMenu" class="border-t border-separator-hairline-light bg-white/95 backdrop-blur-xl">
-      <div class="page-shell py-6">
-        <div class="font-caption text-on-surface-variant mb-3">Departamentos</div>
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-2 max-h-[60vh] overflow-auto pr-2">
-          <a class="font-body-sm py-1.5 hover:text-primary" routerLink="/productos" (click)="showMenu=false">Todos los departamentos</a>
-          <a class="font-body-sm py-1.5 text-primary" routerLink="/productos" [queryParams]="{soloOfertas: true}" (click)="showMenu=false">Ofertas</a>
-          @for (d of departments(); track d.id) {
-            <a class="font-body-sm py-1.5 hover:text-primary transition-colors" [routerLink]="['/productos']" [queryParams]="{categoriaId: d.id}" (click)="showMenu=false">{{d.nombre}}</a>
-          }
-        </div>
-      </div>
-    </div>
-
-    <div class="md:hidden border-t border-separator-hairline-light bg-surface-glass-light">
-      <form class="page-shell py-2" (ngSubmit)="onSearch()">
-        <input class="input-field !py-2 !bg-surface-container-low" [(ngModel)]="searchText" name="searchTextMobile" placeholder="Buscar en la tienda" />
-      </form>
-    </div>
-  </header>
-
-  <main class="page-shell py-6 sm:py-8">
-    <router-outlet />
-  </main>
+    <main class="store-content">
+      <router-outlet />
+      <footer class="store-footer"><span>RouteOS · Tienda de clientes</span><span>Compra simple y seguimiento claro</span></footer>
+    </main>
+  </div>
 </div>

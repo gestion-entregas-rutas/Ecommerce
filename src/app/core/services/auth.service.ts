@@ -30,8 +30,8 @@ export class AuthService {
 
   login(payload: { usuarioOCorreo?: string; correo?: string; usuario?: string; password: string }) {
     const body = {
-      usuarioOCorreo: payload.usuarioOCorreo ?? payload.correo ?? payload.usuario,
-      password: payload.password,
+      nombreUsuario: payload.usuarioOCorreo ?? payload.correo ?? payload.usuario,
+      clave: payload.password,
     };
     return this.http.post<AuthResponse>(`${environment.apiBaseUrl}/autenticacion/login`, body).pipe(
       tap((res) => this.setSession(res)),
@@ -70,9 +70,10 @@ export class AuthService {
   }
 
   private setSession(res: AuthResponse) {
-    if (!res?.token || !res?.usuario) return;
-    this.persist(res.token, res.usuario);
-    this.tokenSignal.set(res.token);
+    const token = res?.accessToken ?? res?.token;
+    if (!token || !res?.usuario) return;
+    this.persist(token, res.usuario);
+    this.tokenSignal.set(token);
     this.userSignal.set(res.usuario);
   }
 
