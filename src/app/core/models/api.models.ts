@@ -192,6 +192,31 @@ export interface CheckoutResponse {
   expiraEn?: string;
 }
 
+export interface DetalleOrdenMia {
+  productoId: string;
+  nombreProducto: string;
+  precioUnitario: number;
+  cantidad: number;
+  subtotal: number;
+}
+
+export interface OrdenDetalleMia {
+  ordenId: string;
+  numeroOrden: string;
+  estadoOrden: string;
+  estadoPago: string;
+  total: number;
+  tipoEntrega: TipoEntrega;
+  creadaEn: string;
+  codigoRetiro: string | null;
+  fechaRetiro: string | null;
+  franjaHoraria: string | null;
+  direccionEntrega: string | null;
+  fechaEntrega: string | null;
+  horaEntrega: string | null;
+  items: DetalleOrdenMia[];
+}
+
 export interface OrdenItemSnapshot {
   productoId: string;
   nombre: string;

@@ -2,7 +2,7 @@ import { Component, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { OrderService } from '../../core/services/order.service';
-import { OrdenResumen } from '../../core/models/api.models';
+import { OrdenDetalleMia, OrdenResumen } from '../../core/models/api.models';
 
 type FiltroTipo = 'todos' | 'domicilio' | 'retiro';
 type FiltroEstado = 'todos' | 'pendiente' | 'curso' | 'completado' | 'cancelado';
@@ -128,6 +128,17 @@ interface LineaPedido { nombre: string; cantidad: number; precio: number; subtot
             <div><span class="text-on-surface-variant">{{esRetiro(o) ? 'Retiro:' : 'Envío:'}}</span> {{humanizar(o.estadoSeguimiento)}}</div>
             <div *ngIf="o.pedidoLogisticoId"><span class="text-on-surface-variant">Guía:</span> <span class="tabular-nums">{{o.pedidoLogisticoId.slice(0,8)}}</span></div>
           </div>
+          <div *ngIf="detalleDe(o) as d" class="mt-3 rounded-xl surface-subtle p-3 font-body-sm grid gap-1 sm:grid-cols-2">
+            <ng-container *ngIf="esRetiro(o); else entregaDomicilio">
+              <div *ngIf="d.fechaRetiro"><span class="text-on-surface-variant">Fecha de retiro:</span> {{d.fechaRetiro | date:'dd MMM yyyy'}}</div>
+              <div *ngIf="d.franjaHoraria"><span class="text-on-surface-variant">Franja horaria:</span> {{d.franjaHoraria}}</div>
+            </ng-container>
+            <ng-template #entregaDomicilio>
+              <div *ngIf="d.direccionEntrega" class="sm:col-span-2"><span class="text-on-surface-variant">Dirección de entrega:</span> {{d.direccionEntrega}}</div>
+              <div *ngIf="d.fechaEntrega"><span class="text-on-surface-variant">Fecha de entrega:</span> {{d.fechaEntrega | date:'dd MMM yyyy'}}</div>
+              <div *ngIf="d.horaEntrega"><span class="text-on-surface-variant">Hora:</span> {{d.horaEntrega.slice(0,5)}}</div>
+            </ng-template>
+          </div>
           <div *ngIf="esRetiro(o) && o.codigoRetiro && activo(o)" class="mt-4 rounded-xl badge-green p-3 flex items-center justify-between gap-3">
             <span class="font-body-sm">Presenta este código en tienda</span>
             <strong class="font-title-md tracking-wider">{{o.codigoRetiro}}</strong>
@@ -144,6 +155,7 @@ export class OrdersPage implements OnInit {
   error = signal('');
   tipo = signal<FiltroTipo>('todos');
   estado = signal<FiltroEstado>('todos');
+  detalles = signal<Record<string, OrdenDetalleMia>>({});
 
   readonly estados: { id: FiltroEstado; label: string }[] = [
     { id: 'todos', label: 'Todos' },
@@ -169,8 +181,20 @@ export class OrdersPage implements OnInit {
   load() {
     this.loading.set(true); this.error.set('');
     this.orders.misOrdenes().subscribe({
-      next: (res: any) => { this.ordenes.set(Array.isArray(res) ? res : (res?.items ?? [])); this.loading.set(false); },
+      next: (res: any) => {
+        const lista: OrdenResumen[] = Array.isArray(res) ? res : (res?.items ?? []);
+        this.ordenes.set(lista); this.loading.set(false);
+        lista.forEach((o) => this.cargarDetalle(o.ordenId));
+      },
       error: (e) => { this.error.set(e?.userMessage || 'No pudimos cargar tus pedidos.'); this.loading.set(false); },
+    });
+  }
+
+  /** GET /ordenes/{id}/detalle: productos y datos de entrega de cada orden. */
+  private cargarDetalle(id: string) {
+    this.orders.detalle?.(id)?.subscribe({
+      next: (d) => this.detalles.update((m) => ({ ...m, [id]: d })),
+      error: () => { /* se usa la copia local si existe */ },
     });
   }
 
@@ -187,6 +211,11 @@ export class OrdersPage implements OnInit {
 
   /** Productos del pedido: los que devuelva la API o la copia guardada al hacer el checkout. */
   lineas(o: OrdenResumen): LineaPedido[] {
+    const d = this.detalles()[o.ordenId];
+    if (d?.items) {
+      const local = this.orders.detalleLocal?.(o.ordenId) ?? [];
+      return d.items.map((i) => ({ nombre: i.nombreProducto, cantidad: i.cantidad, precio: i.precioUnitario, subtotal: i.subtotal, imagenUrl: local.find((l) => l.productoId === i.productoId)?.imagenUrl }));
+    }
     if (o.items?.length) {
       return o.items.map((i) => {
         const precio = i.precioAplicado ?? i.precioUnitario ?? i.precioOferta ?? i.precioBase ?? 0;
@@ -196,6 +225,7 @@ export class OrdersPage implements OnInit {
     const local = this.orders.detalleLocal?.(o.ordenId) ?? [];
     return local.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio, subtotal: i.precio * i.cantidad, imagenUrl: i.imagenUrl }));
   }
+  detalleDe(o: OrdenResumen) { return this.detalles()[o.ordenId]; }
   unidades(o: OrdenResumen) { return this.lineas(o).reduce((a, l) => a + l.cantidad, 0); }
 
   grupo(o: OrdenResumen): FiltroEstado {

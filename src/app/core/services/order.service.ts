@@ -1,7 +1,7 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { environment } from '../../../environments/environment';
-import { OrdenItemSnapshot, CheckoutRequest, CheckoutResponse, OrdenResumen, PayPalOrdenResponse } from '../models/api.models';
+import { OrdenDetalleMia, OrdenItemSnapshot, CheckoutRequest, CheckoutResponse, OrdenResumen, PayPalOrdenResponse } from '../models/api.models';
 
 function idempotencyKey(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -49,6 +49,10 @@ export class OrderService {
     try {
       return JSON.parse(localStorage.getItem(this.detalleKey) || '{}')[ordenId] ?? null;
     } catch { return null; }
+  }
+
+  detalle(id: string) {
+    return this.http.get<OrdenDetalleMia>(`${environment.apiBaseUrl}/ordenes/${id}/detalle`);
   }
 
   misOrdenes() {
