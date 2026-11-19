@@ -50,13 +50,13 @@ describe('OrdersPage (Unit Test)', () => {
 
   it('debe cargar y listar las órdenes del cliente al inicializarse', () => {
     expect(ordersMock.misOrdenes).toHaveBeenCalled();
-    expect(component.ordenes.length).toBe(2);
-    expect(component.loading).toBe(false);
+    expect(component.ordenes().length).toBe(2);
+    expect(component.loading()).toBe(false);
   });
 
   it('stepIndex() debe calcular correctamente el progreso del pedido', () => {
-    // Listo / Pagado => 1
-    expect(component.stepIndex(mockOrdersList[0])).toBe(1);
+    // Retiro listo => 2 (listo para retirar)
+    expect(component.stepIndex(mockOrdersList[0])).toBe(2);
 
     // EnCamino => 2
     expect(component.stepIndex(mockOrdersList[1])).toBe(2);
@@ -68,7 +68,7 @@ describe('OrdersPage (Unit Test)', () => {
 
   it('statusMessage() debe generar mensajes claros y acordes a la modalidad de entrega', () => {
     const msgRetiro = component.statusMessage(mockOrdersList[0]);
-    expect(msgRetiro).toContain('preparación');
+    expect(msgRetiro).toContain('listo para retiro');
 
     const msgDomicilio = component.statusMessage(mockOrdersList[1]);
     expect(msgDomicilio).toContain('en camino');
@@ -81,7 +81,7 @@ describe('OrdersPage (Unit Test)', () => {
 
     component.load();
 
-    expect(component.error).toBe('Error al conectar con el servidor de pedidos');
-    expect(component.loading).toBe(false);
+    expect(component.error()).toBe('Error al conectar con el servidor de pedidos');
+    expect(component.loading()).toBe(false);
   });
 });

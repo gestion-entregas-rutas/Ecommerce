@@ -14,7 +14,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     tap((event) => {
       if (event instanceof HttpResponse) {
         const headerToken = event.headers.get('X-Cart-Token') || event.headers.get('x-cart-token');
-        const bodyToken = (event.body as any)?.cartToken;
+        const bodyToken = (event.body as any)?.tokenInvitado ?? (event.body as any)?.cartToken;
         if (headerToken) cartTokenService.set(headerToken);
         if (bodyToken) cartTokenService.set(bodyToken);
       }

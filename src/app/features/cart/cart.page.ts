@@ -23,16 +23,16 @@ import { AuthService } from '../../core/services/auth.service';
       <div class="space-y-3">
         <article *ngFor="let item of cart.items()" class="surface-card p-4 sm:p-5 flex flex-col sm:flex-row gap-4">
           <div class="h-24 w-24 rounded-lg bg-surface-container-low flex items-center justify-center p-2 shrink-0">
-            <img *ngIf="item.imagenUrl" [src]="item.imagenUrl" class="max-h-full max-w-full object-contain" />
-            <span *ngIf="!item.imagenUrl" class="material-symbols-outlined text-on-surface-variant">inventory_2</span>
+            <img *ngIf="item.imagenPrincipalUrl || item.imagenUrl" [src]="item.imagenPrincipalUrl || item.imagenUrl" class="max-h-full max-w-full object-contain" />
+            <span *ngIf="!(item.imagenPrincipalUrl || item.imagenUrl)" class="material-symbols-outlined text-on-surface-variant">inventory_2</span>
           </div>
           <div class="flex-1 min-w-0">
             <div class="font-title-md truncate">{{item.nombre || item.productoId}}</div>
-            <div class="font-body-sm text-on-surface-variant mt-1 tabular-nums">\${{(item.precioUnitario ?? item.precioOferta ?? item.precioBase ?? 0) | number:'1.2-2'}} c/u</div>
+            <div class="font-body-sm text-on-surface-variant mt-1 tabular-nums">\${{(item.precioAplicado ?? item.precioUnitario ?? item.precioOferta ?? item.precioBase ?? 0) | number:'1.2-2'}} c/u</div>
             <div class="font-body-sm mt-1" [ngClass]="item.stockDisponible===0 ? 'text-status-urgent' : 'text-status-delivered'">
               {{ item.stockDisponible===0 ? 'Este producto acaba de agotarse mientras navegabas.' : 'Disponible para entrega hoy en tu zona.' }}
             </div>
-            <div *ngIf="item.mensaje" class="font-body-sm text-status-in-transit mt-1">{{item.mensaje}}</div>
+            <div *ngIf="item.mensaje || item.advertencia" class="font-body-sm text-status-in-transit mt-1">{{item.mensaje || item.advertencia}}</div>
           </div>
           <div class="flex sm:flex-col items-center sm:items-end justify-between gap-3">
             <div class="inline-flex items-center rounded-lg border border-separator-hairline-light bg-white">
@@ -40,7 +40,7 @@ import { AuthService } from '../../core/services/auth.service';
               <span class="w-9 text-center font-label-md tabular-nums">{{item.cantidad}}</span>
               <button class="h-9 w-9 hover:bg-surface-container-low rounded-r-lg" (click)="inc(item)" [disabled]="item.stockDisponible!=null && item.cantidad>=item.stockDisponible">+</button>
             </div>
-            <div class="font-title-md tabular-nums">\${{((item.subtotal ?? ((item.precioUnitario ?? item.precioOferta ?? item.precioBase ?? 0)*item.cantidad))) | number:'1.2-2'}}</div>
+            <div class="font-title-md tabular-nums">\${{((item.subtotal ?? ((item.precioAplicado ?? item.precioUnitario ?? item.precioOferta ?? item.precioBase ?? 0)*item.cantidad))) | number:'1.2-2'}}</div>
             <button class="font-body-sm text-primary hover:underline" (click)="remove(item.productoId)">Quitar</button>
           </div>
         </article>

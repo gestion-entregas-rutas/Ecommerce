@@ -1,7 +1,7 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { environment } from '../../../environments/environment';
-import { CheckoutRequest, CheckoutResponse, OrdenResumen } from '../models/api.models';
+import { OrdenItemSnapshot, CheckoutRequest, CheckoutResponse, OrdenResumen, PayPalOrdenResponse } from '../models/api.models';
 
 function idempotencyKey(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -24,6 +24,31 @@ export class OrderService {
   cancelarPago(id: string, key?: string) {
     const headers = new HttpHeaders({ 'Idempotency-Key': key || idempotencyKey('cancel') });
     return this.http.post<CheckoutResponse | OrdenResumen>(`${environment.apiBaseUrl}/ordenes/${id}/pago/cancelar`, {}, { headers });
+  }
+
+  crearOrdenPayPal(id: string) {
+    return this.http.post<PayPalOrdenResponse>(`${environment.apiBaseUrl}/ordenes/${id}/paypal/orden`, {});
+  }
+
+  capturarPayPal(id: string) {
+    return this.http.post<CheckoutResponse>(`${environment.apiBaseUrl}/ordenes/${id}/paypal/captura`, {});
+  }
+
+  // El backend (GET /ordenes/mias) no devuelve los artículos de cada orden: se guarda una copia local al crear el checkout.
+  private readonly detalleKey = 'tienda.orderItems.v1';
+
+  guardarDetalle(ordenId: string, items: OrdenItemSnapshot[]) {
+    try {
+      const all = JSON.parse(localStorage.getItem(this.detalleKey) || '{}');
+      all[ordenId] = items;
+      localStorage.setItem(this.detalleKey, JSON.stringify(all));
+    } catch { /* almacenamiento no disponible */ }
+  }
+
+  detalleLocal(ordenId: string): OrdenItemSnapshot[] | null {
+    try {
+      return JSON.parse(localStorage.getItem(this.detalleKey) || '{}')[ordenId] ?? null;
+    } catch { return null; }
   }
 
   misOrdenes() {

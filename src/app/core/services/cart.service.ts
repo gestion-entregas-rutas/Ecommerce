@@ -15,7 +15,7 @@ export class CartService {
   readonly subtotal = computed(() => {
     const c = this.cartSignal();
     if (c?.subtotal != null) return c.subtotal;
-    return this.items().reduce((acc, i) => acc + (i.subtotal ?? (i.precioUnitario ?? i.precioOferta ?? i.precioBase ?? 0) * i.cantidad), 0);
+    return this.items().reduce((acc, i) => acc + (i.subtotal ?? (i.precioAplicado ?? i.precioUnitario ?? i.precioOferta ?? i.precioBase ?? 0) * i.cantidad), 0);
   });
 
   constructor(
@@ -61,8 +61,25 @@ export class CartService {
   }
 
   cotizacion() {
-    return this.http.get<Carrito>(`${environment.apiBaseUrl}/carrito/cotizacion`).pipe(
-      tap((cart) => this.setCart(cart)),
+    // /carrito/cotizacion devuelve CotizacionDto (otra forma que CarritoDto): se combina con el carrito actual.
+    return this.http.get<any>(`${environment.apiBaseUrl}/carrito/cotizacion`).pipe(
+      tap((q) => {
+        const actual = this.cartSignal();
+        const porId = new Map<string, any>((q?.items ?? []).map((i: any) => [i.productoId, i]));
+        const items = (actual?.items ?? [])
+          .map((i) => {
+            const c = porId.get(i.productoId);
+            if (!c) return i;
+            return { ...i, cantidad: c.cantidadFinal ?? i.cantidad, precioAplicado: c.precioUnitario ?? i.precioAplicado, subtotal: c.subtotal ?? i.subtotal, disponible: c.disponible ?? i.disponible, advertencia: c.advertencia ?? null };
+          })
+          .filter((i) => i.cantidad > 0);
+        this.setCart({
+          ...(actual ?? { items: [] }),
+          items,
+          subtotal: q?.subtotal, descuento: q?.descuento, envio: q?.envio, total: q?.total,
+          requiereRevision: !!q?.requiereRevision, advertencias: q?.advertencias ?? [],
+        });
+      }),
     );
   }
 
@@ -70,7 +87,7 @@ export class CartService {
     this.cartSignal.set(cart);
     if (cart) {
       this.storage.set(environment.cartStorageKey, cart);
-      if (cart.cartToken) this.cartTokenService.set(cart.cartToken);
+      this.cartTokenService.set(cart.tokenInvitado ?? cart.cartToken);
     } else {
       this.storage.remove(environment.cartStorageKey);
     }

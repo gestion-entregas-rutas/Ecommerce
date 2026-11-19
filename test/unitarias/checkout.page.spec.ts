@@ -81,7 +81,7 @@ describe('CheckoutPage (Unit Test)', () => {
 
   it('debe inicializarse con la modalidad de entrega provista en la URL', () => {
     expect(component.tipoEntrega).toBe('RetiroTienda');
-    expect(catalogMock.getZonas).toHaveBeenCalled();
+    expect(catalogMock.getZonas).not.toHaveBeenCalled(); // GET /api/zonas devuelve 403 al cliente; el backend valida la cobertura
   });
 
   it('setTipo() debe alternar entre RetiroTienda y Domicilio', () => {

@@ -107,7 +107,11 @@ export interface CarritoItem {
   productoId: string;
   nombre?: string;
   imagenUrl?: string | null;
+  imagenPrincipalUrl?: string | null;
   precioUnitario?: number;
+  precioAplicado?: number;
+  activo?: boolean;
+  advertencia?: string | null;
   precioBase?: number;
   precioOferta?: number | null;
   cantidad: number;
@@ -123,6 +127,9 @@ export interface Carrito {
   total?: number;
   cantidadTotal?: number;
   cartToken?: string;
+  tokenInvitado?: string | null;
+  descuento?: number;
+  envio?: number;
   requiereRevision?: boolean;
   advertencias?: string[];
 }
@@ -149,10 +156,17 @@ export interface DatosDomicilio {
 }
 
 export interface MetodoPagoSimulado {
-  tipo: 'Tarjeta' | 'Transferencia' | string;
-  titular?: string;
-  ultimos4?: string;
-  referenciaSimulada?: string;
+  tipo: 'Tarjeta' | 'Transferencia' | 'PayPal' | string;
+  titular?: string | null;
+  ultimos4?: string | null;
+  referenciaSimulada?: string | null;
+}
+
+export interface PayPalOrdenResponse {
+  ordenId: string;
+  payPalOrderId: string;
+  urlAprobacion: string;
+  estadoPago: string;
 }
 
 export interface CheckoutRequest {
@@ -178,6 +192,14 @@ export interface CheckoutResponse {
   expiraEn?: string;
 }
 
+export interface OrdenItemSnapshot {
+  productoId: string;
+  nombre: string;
+  cantidad: number;
+  precio: number;
+  imagenUrl?: string | null;
+}
+
 export interface OrdenResumen {
   ordenId: string;
   numeroOrden?: string;
@@ -189,6 +211,7 @@ export interface OrdenResumen {
   pedidoLogisticoId?: string | null;
   estadoSeguimiento?: string | null;
   fechaCreacion?: string;
+  creadaEn?: string;
   expiraEn?: string;
   items?: CarritoItem[];
 }

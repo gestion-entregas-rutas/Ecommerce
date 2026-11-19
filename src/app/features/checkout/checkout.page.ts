@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -71,8 +71,16 @@ function pointInPolygon(lat: number, lng: number, poly: { latitud: number; longi
           <h2 class="font-title-md">2. Pago</h2>
           <p class="font-body-sm text-on-surface-variant mt-1">Pago simulado para completar tu pedido.</p>
           <div class="segmented-ios mt-4 inline-flex">
+            <button type="button" [class.active]="pago.tipo==='PayPal'" (click)="pago.tipo='PayPal'">PayPal</button>
             <button type="button" [class.active]="pago.tipo==='Tarjeta'" (click)="pago.tipo='Tarjeta'">Tarjeta</button>
             <button type="button" [class.active]="pago.tipo==='Transferencia'" (click)="pago.tipo='Transferencia'">Transferencia</button>
+          </div>
+          <div *ngIf="pago.tipo==='PayPal'" class="mt-4 surface-subtle p-4 flex items-start gap-3">
+            <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#003087] text-white font-bold italic">P</span>
+            <div class="font-body-sm text-on-surface-variant">
+              <div class="font-label-md text-on-surface">Paga de forma segura con PayPal</div>
+              Serás redirigido a PayPal para aprobar el pago y luego volverás a la tienda. Tu pedido se confirma solo cuando PayPal valida el cobro.
+            </div>
           </div>
           <div *ngIf="pago.tipo==='Tarjeta'" class="mt-4 grid gap-3 sm:grid-cols-2">
             <input class="input-field sm:col-span-2" [(ngModel)]="pago.titular" name="ptitular" placeholder="Titular de la tarjeta">
@@ -120,7 +128,7 @@ function pointInPolygon(lat: number, lng: number, poly: { latitud: number; longi
         </div>
 
         <div class="flex flex-wrap gap-3" *ngIf="!success">
-          <button class="btn-primary !py-3 !px-6" (click)="submit()" [disabled]="processing || cart.items().length===0">Confirmar y pagar</button>
+          <button class="btn-primary !py-3 !px-6" (click)="submit()" [disabled]="processing || cart.items().length===0">{{ processing && pago.tipo==='PayPal' ? 'Redirigiendo a PayPal...' : pago.tipo==='PayPal' ? 'Pagar con PayPal' : 'Confirmar y pagar' }}</button>
           <button class="btn-ghost !py-3" (click)="refreshQuote()">Actualizar totales</button>
         </div>
       </div>
@@ -131,7 +139,7 @@ function pointInPolygon(lat: number, lng: number, poly: { latitud: number; longi
         <div class="mt-4 space-y-3 font-body-sm">
           <div *ngFor="let i of cart.items()" class="flex justify-between gap-3">
             <span class="text-on-surface-variant">{{i.nombre || i.productoId}} × {{i.cantidad}}</span>
-            <span class="tabular-nums">\${{((i.subtotal ?? ((i.precioUnitario ?? i.precioOferta ?? i.precioBase ?? 0)*i.cantidad))) | number:'1.2-2'}}</span>
+            <span class="tabular-nums">\${{((i.subtotal ?? ((i.precioAplicado ?? i.precioUnitario ?? i.precioOferta ?? i.precioBase ?? 0)*i.cantidad))) | number:'1.2-2'}}</span>
           </div>
         </div>
         <div class="mt-4 pt-4 border-t border-separator-hairline-light space-y-2 font-body-sm">
@@ -150,7 +158,7 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
   tipoEntrega: 'RetiroTienda' | 'Domicilio' = 'Domicilio';
   retiro = { cedulaQuienRetira: '', nombreQuienRetira: '', telefonoContacto: '', fechaRetiro: '', franjaHoraria: '' };
   domicilio = { destinatarioNombre: '', destinatarioTelefono: '', direccionTexto: '', latitud: null as number | null, longitud: null as number | null, fechaEntrega: '', horaEntrega: '', observaciones: '' };
-  pago: any = { tipo: 'Tarjeta', titular: '', ultimos4: '', referenciaSimulada: '' };
+  pago: any = { tipo: 'PayPal', titular: '', ultimos4: '', referenciaSimulada: '' };
   card = { numero: '', exp: '', cvv: '' }; cardError = '';
   zonas: any[] = []; coberturaMsg = ''; coberturaOk = false;
   map?: L.Map; marker?: L.Marker; polygons: L.Polygon[] = [];
@@ -160,13 +168,13 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
   cancelKey = `cancel-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   remainingSec = 0; timer?: any;
 
-  constructor(public cart: CartService, private catalog: CatalogService, private orders: OrderService, private router: Router, private route: ActivatedRoute) {}
+  constructor(public cart: CartService, private catalog: CatalogService, private orders: OrderService, private router: Router, private route: ActivatedRoute, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
     const entrega = this.route.snapshot.queryParamMap.get('entrega');
     if (entrega === 'RetiroTienda' || entrega === 'Domicilio') this.tipoEntrega = entrega;
     this.cart.cotizacion().subscribe({ error: () => this.cart.load().subscribe({ error: () => {} }) });
-    this.catalog.getZonas().subscribe({ next: (z) => { this.zonas = z || []; this.drawZones(); }, error: () => {} });
+    // GET /api/zonas no es accesible para el cliente (403): la cobertura la valida el backend (422 si no hay cobertura).
   }
   ngAfterViewInit() { if (this.tipoEntrega === 'Domicilio') setTimeout(() => this.initMap(), 0); }
   ngOnDestroy() { if (this.timer) clearInterval(this.timer); this.map?.remove(); }
@@ -192,7 +200,7 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
     });
   }
   setPoint(lat: number, lng: number) {
-    this.domicilio.latitud = +lat.toFixed(6); this.domicilio.longitud = +lng.toFixed(6);
+    this.domicilio.latitud = +lat.toFixed(6); this.domicilio.longitud = +lng.toFixed(6); this.cdr.markForCheck();
     if (!this.map) return;
     if (!this.marker) this.marker = L.marker([lat, lng]).addTo(this.map); else this.marker.setLatLng([lat, lng]);
     this.validateCoverage();
@@ -222,28 +230,53 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
     return true;
   }
 
+  private camposFaltantes(): string {
+    const vacio = (v: any) => v == null || String(v).trim() === '';
+    if (this.tipoEntrega === 'RetiroTienda') {
+      const r = this.retiro;
+      if ([r.cedulaQuienRetira, r.nombreQuienRetira, r.telefonoContacto, r.fechaRetiro, r.franjaHoraria].some(vacio)) return 'Completa todos los datos de retiro: cédula, nombre, teléfono, fecha y franja horaria.';
+    } else {
+      const d = this.domicilio;
+      if ([d.destinatarioNombre, d.destinatarioTelefono, d.direccionTexto, d.fechaEntrega, d.horaEntrega].some(vacio)) return 'Completa los datos de entrega: destinatario, teléfono, dirección, fecha y hora.';
+    }
+    return '';
+  }
+
   submit() {
     this.error = '';
     if (this.cart.cart()?.requiereRevision) { this.error = 'Detectamos cambios en tu bolsa. Actualiza los totales antes de pagar.'; return; }
+    const faltan = this.camposFaltantes();
+    if (faltan) { this.error = faltan; return; }
     if (this.tipoEntrega === 'Domicilio' && !this.validateCoverage()) { this.error = this.coberturaMsg; return; }
     if (!this.validateCard()) return;
     const items = this.cart.items().map(i => ({ productoId: i.productoId, cantidad: i.cantidad }));
-    const payload: any = { items, tipoEntrega: this.tipoEntrega, metodoPago: this.pago, datosRetiroTienda: null, datosDomicilio: null };
+    const metodoPago = this.pago.tipo === 'PayPal' ? { tipo: 'PayPal', titular: null, ultimos4: null, referenciaSimulada: null } : this.pago;
+    const payload: any = { items, tipoEntrega: this.tipoEntrega, metodoPago, datosRetiroTienda: null, datosDomicilio: null };
     if (this.tipoEntrega === 'RetiroTienda') payload.datosRetiroTienda = this.retiro;
-    else payload.datosDomicilio = { ...this.domicilio, horaEntrega: this.domicilio.horaEntrega?.length === 5 ? this.domicilio.horaEntrega + ':00' : this.domicilio.horaEntrega };
+    else payload.datosDomicilio = { ...this.domicilio, observaciones: this.domicilio.observaciones || '', horaEntrega: this.domicilio.horaEntrega?.length === 5 ? this.domicilio.horaEntrega + ':00' : this.domicilio.horaEntrega };
 
+    const snapshot = this.cart.items().map(i => ({ productoId: i.productoId, nombre: i.nombre || i.productoId, cantidad: i.cantidad, precio: i.precioAplicado ?? i.precioUnitario ?? i.precioOferta ?? i.precioBase ?? 0, imagenUrl: i.imagenPrincipalUrl ?? i.imagenUrl ?? null }));
     this.processing = true;
     this.orders.checkout(payload, this.checkoutKey).subscribe({
-      next: (res) => { this.success = res; this.processing = false; this.startExpiryTimer(res.expiraEn); this.cart.clearLocal(); },
+      next: (res) => {
+        this.orders.guardarDetalle(res.ordenId, snapshot);
+        if (this.pago.tipo === 'PayPal') { this.iniciarPayPal(res.ordenId); return; }
+        this.success = res; this.processing = false; this.cdr.markForCheck(); this.startExpiryTimer(res.expiraEn); this.cart.clearLocal();
+      },
       error: (e) => {
-        this.processing = false;
+        this.processing = false; this.cdr.markForCheck();
         const code = e?.code || e?.problem?.codigo;
         if (e?.status === 409 && code === 'STOCK_AGOTADO') {
           const p = e?.problem;
           this.error = `Lo sentimos, ${p?.mensaje || 'un artículo de tu bolsa acaba de agotarse o cambió su disponibilidad.'}${p?.stockDisponible != null ? ` (disponible: ${p.stockDisponible})` : ''} Actualizamos tu bolsa para que puedas continuar.`;
           this.cart.cotizacion().subscribe({ error: () => this.cart.load().subscribe({ error: () => {} }) });
+        } else if (e?.status === 403) {
+          this.error = 'Tu cuenta no tiene permisos de Cliente para realizar compras.';
+        } else if (e?.status === 404) {
+          this.error = 'Un producto de tu bolsa ya no existe. Actualizamos tu bolsa para que revises.';
+          this.cart.load().subscribe({ error: () => {} });
         } else if (e?.status === 422) {
-          this.error = e?.userMessage || 'No podemos entregar en esa dirección. Prueba seleccionando otro punto dentro de la zona de cobertura.';
+          this.error = e?.problem?.detail || e?.userMessage || 'No podemos entregar en esa dirección. Prueba seleccionando otro punto dentro de la zona de cobertura.';
         } else if (e?.status === 409 && code === 'PAGO_NO_CONFIRMABLE') {
           this.error = 'La reserva de tu pedido expiró o ya no es confirmable. Te invitamos a iniciar un nuevo checkout.';
         } else {
@@ -253,13 +286,28 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  private iniciarPayPal(ordenId: string) {
+    sessionStorage.setItem('paypal:ordenId', ordenId);
+    this.orders.crearOrdenPayPal(ordenId).subscribe({
+      next: (r) => {
+        if (!r?.urlAprobacion) { this.processing = false; this.cdr.markForCheck(); this.error = 'PayPal no devolvió un enlace de aprobación. Inténtalo nuevamente.'; return; }
+        window.location.assign(r.urlAprobacion);
+      },
+      error: (e) => {
+        this.processing = false; this.cdr.markForCheck();
+        sessionStorage.removeItem('paypal:ordenId');
+        this.error = e?.userMessage || 'No pudimos iniciar el pago con PayPal. Inténtalo nuevamente.';
+      },
+    });
+  }
+
   confirmarPago() {
     if (!this.success?.ordenId) return;
     this.processing = true;
     this.orders.confirmarPago(this.success.ordenId, this.confirmKey).subscribe({
-      next: (res: any) => { this.processing = false; this.confirmed = true; this.success = { ...this.success!, ...res }; },
+      next: (res: any) => { this.processing = false; this.cdr.markForCheck(); this.confirmed = true; this.success = { ...this.success!, ...res }; },
       error: (e) => {
-        this.processing = false;
+        this.processing = false; this.cdr.markForCheck();
         const code = e?.code || e?.problem?.codigo;
         this.error = code === 'PAGO_NO_CONFIRMABLE' ? 'La reserva expiró o fue liberada. Por favor, realiza un nuevo checkout.' : (e?.userMessage || 'No pudimos confirmar el pago. Inténtalo nuevamente.');
       },
@@ -269,8 +317,8 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
     if (!this.success?.ordenId) return;
     this.processing = true;
     this.orders.cancelarPago(this.success.ordenId, this.cancelKey).subscribe({
-      next: (res: any) => { this.processing = false; this.cancelled = true; this.success = { ...this.success!, ...res }; },
-      error: (e) => { this.processing = false; this.error = e?.userMessage || 'No pudimos cancelar el pago en este momento.'; },
+      next: (res: any) => { this.processing = false; this.cdr.markForCheck(); this.cancelled = true; this.success = { ...this.success!, ...res }; },
+      error: (e) => { this.processing = false; this.cdr.markForCheck(); this.error = e?.userMessage || 'No pudimos cancelar el pago en este momento.'; },
     });
   }
 
@@ -278,7 +326,7 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
   startExpiryTimer(expiraEn?: string) {
     if (!expiraEn) return;
     const end = new Date(expiraEn).getTime();
-    const tick = () => { this.remainingSec = Math.max(0, Math.floor((end - Date.now()) / 1000)); };
+    const tick = () => { this.remainingSec = Math.max(0, Math.floor((end - Date.now()) / 1000)); this.cdr.markForCheck(); };
     tick(); this.timer = setInterval(tick, 1000);
   }
   goOrders() { this.router.navigateByUrl('/mis-pedidos'); }
