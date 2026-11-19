@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -6,151 +6,163 @@ import { Subject, Subscription, catchError, map, of, switchMap, takeUntil, timer
 import { CatalogService } from '../../core/services/catalog.service';
 import { CartService } from '../../core/services/cart.service';
 import { Categoria, Producto } from '../../core/models/api.models';
+import { FieldErrorComponent } from '../../core/validation/form-rules';
+import { ToastService } from '../../core/services/toast.service';
 
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, FieldErrorComponent],
   template: `
-  <section class="fade-in">
-    <div class="mb-6">
-      <nav class="font-body-sm text-on-surface-variant mb-2">
-        <a routerLink="/" class="hover:text-primary">Inicio</a><span class="mx-1.5">/</span><span>{{ breadcrumbLabel() }}</span>
-      </nav>
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h1 class="font-headline-lg">{{ pageTitle() }}</h1>
-          <p class="font-body-sm text-on-surface-variant mt-1">Encuentra lo que buscas y filtra por precio, categoría u ofertas.</p>
-        </div>
-        <form class="w-full lg:max-w-xl" (ngSubmit)="submitSearch()">
-          <div class="relative">
-            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-on-surface-variant">search</span>
-            <input class="input-field !pl-11 !pr-24 !py-3 bg-surface-container-lowest" [ngModel]="searchDraft" (ngModelChange)="onSearchInput($event)" name="searchDraft" placeholder="Buscar por nombre, marca o categoría" />
-            <button *ngIf="searchDraft" type="button" class="absolute right-[88px] top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface" (click)="clearSearch()"><span class="material-symbols-outlined text-[18px]">close</span></button>
-            <button type="submit" class="absolute right-1.5 top-1/2 -translate-y-1/2 btn-primary !py-2 !px-4">Buscar</button>
-          </div>
-          <p class="font-body-sm text-on-surface-variant mt-1.5">La búsqueda se actualiza automáticamente mientras escribes.</p>
-        </form>
+  <section>
+    <nav class="mb-2 flex items-center gap-1.5 text-xs font-medium text-on-surface-variant" aria-label="Ruta de navegación">
+      <a routerLink="/" class="hover:text-primary">Inicio</a>
+      <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+      <a routerLink="/productos" class="hover:text-primary">Tienda</a>
+      <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+      <span class="font-semibold text-on-surface">{{ pageTitle() }}</span>
+    </nav>
+
+    <header class="flex flex-col justify-between gap-4 border-b border-separator-hairline-light pb-6 sm:flex-row sm:items-end">
+      <div>
+        <h1 class="text-2xl font-extrabold tracking-tight text-deep md:text-[32px]">{{ pageTitle() }}</h1>
+        <p class="mt-1 text-sm font-medium text-on-surface-variant" role="status" aria-live="polite">
+          {{ loading ? 'Buscando productos…' : error ? 'No se pudieron cargar los resultados.' : 'Mostrando ' + total + (total === 1 ? ' producto disponible' : ' productos disponibles') }}
+        </p>
       </div>
-    </div>
+      <div class="flex items-center gap-2 self-start sm:self-auto">
+        <label for="orden" class="whitespace-nowrap text-xs font-semibold text-on-surface-variant">Ordenar por:</label>
+        <select id="orden" class="rounded-xl border border-separator-hairline-light bg-white py-2 pl-3 pr-8 text-xs font-medium shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30" [ngModel]="filters.orden" (ngModelChange)="setOrden($event)" name="orden">
+          <option value="relevancia">Más relevantes</option>
+          <option value="precio_asc">Menor precio</option>
+          <option value="precio_desc">Mayor precio</option>
+          <option value="calificacion">Mejor calificados</option>
+        </select>
+      </div>
+    </header>
 
-    <div class="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 items-start">
-      <aside class="surface-card p-5 lg:sticky lg:top-20 border-t-4 border-t-primary">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="font-title-md flex items-center gap-2"><span class="material-symbols-outlined text-primary">tune</span>Filtros</h2>
-          <button type="button" class="font-label-md text-primary hover:underline" (click)="resetFilters()">Limpiar</button>
+    <div class="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-4 xl:grid-cols-5">
+      <aside class="space-y-6 rounded-2xl border border-separator-hairline-light bg-white p-5 shadow-sm lg:sticky lg:top-24" aria-label="Filtros">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div class="flex items-center gap-2 font-bold text-deep">
+            <span class="material-symbols-outlined text-[20px] text-primary">tune</span>Filtros
+          </div>
+          <button type="button" class="text-xs font-semibold text-primary hover:underline" (click)="resetFilters()">Limpiar</button>
         </div>
 
-        <div class="space-y-4">
-          <div>
-            <label class="font-label-md block mb-1.5">Categoría</label>
-            <select class="input-field" [ngModel]="filters.categoriaId" (ngModelChange)="setCategoria($event)">
-              <option [ngValue]="null">Todas las categorías</option>
-              @for (c of categorias; track c.id) { <option [ngValue]="c.id">{{c.nombre}}</option> }
-            </select>
-          </div>
+        <div class="space-y-2.5">
+          <label class="block text-xs font-bold uppercase tracking-wider text-on-surface-variant" for="f-cat">Categoría</label>
+          <select id="f-cat" class="w-full rounded-xl border border-separator-hairline-light bg-system-background px-3 py-2 text-xs font-medium focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/30" [ngModel]="filters.categoriaId" (ngModelChange)="setCategoria($event)" name="categoria">
+            <option [ngValue]="null">Todas las categorías</option>
+            @for (c of categorias; track c.id) { <option [ngValue]="c.id">{{c.nombre}}</option> }
+          </select>
+        </div>
 
-          <div>
-            <label class="font-label-md block mb-1.5">Rango de precio</label>
-            <div class="grid grid-cols-2 gap-2">
-              <input type="number" min="0" class="input-field" placeholder="Mín" [ngModel]="filters.precioMin" (ngModelChange)="setPrecioMin($event)" />
-              <input type="number" min="0" class="input-field" placeholder="Máx" [ngModel]="filters.precioMax" (ngModelChange)="setPrecioMax($event)" />
+        <div class="space-y-3">
+          <span class="block text-xs font-bold uppercase tracking-wider text-on-surface-variant">Rango de precio</span>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label for="pmin" class="text-[11px] font-semibold text-on-surface-variant">Mín</label>
+              <div class="relative mt-1">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 text-xs font-semibold text-on-surface-variant">$</span>
+                <input id="pmin" type="number" min="0" class="w-full rounded-lg border border-separator-hairline-light bg-system-background py-2 pl-6 pr-2 text-xs font-medium focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="0" [ngModel]="filters.precioMin" (ngModelChange)="setPrecioMin($event)" name="pmin" />
+              </div>
             </div>
-            <p class="font-body-sm text-on-surface-variant mt-1">Se aplica automáticamente al escribir.</p>
+            <div>
+              <label for="pmax" class="text-[11px] font-semibold text-on-surface-variant">Máx</label>
+              <div class="relative mt-1">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 text-xs font-semibold text-on-surface-variant">$</span>
+                <input id="pmax" type="number" min="0" class="w-full rounded-lg border border-separator-hairline-light bg-system-background py-2 pl-6 pr-2 text-xs font-medium focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="500" [ngModel]="filters.precioMax" (ngModelChange)="setPrecioMax($event)" name="pmax" />
+              </div>
+            </div>
           </div>
+          <app-field-error [message]="precioError()" />
+        </div>
 
-          <label class="flex items-center gap-2 font-body-sm cursor-pointer select-none">
-            <input type="checkbox" class="h-4 w-4 accent-primary" [ngModel]="filters.soloOfertas" (ngModelChange)="toggleOfertas($event)" />
-            Solo ofertas
+        <div class="border-t border-slate-100 pt-4">
+          <label class="group flex cursor-pointer items-center gap-3">
+            <input type="checkbox" class="h-4 w-4 rounded border-slate-300 accent-primary" [ngModel]="filters.soloOfertas" (ngModelChange)="toggleOfertas($event)" name="ofertas" />
+            <span class="text-xs font-semibold group-hover:text-primary">Solo productos en oferta</span>
           </label>
-
-          <div>
-            <label class="font-label-md block mb-1.5">Ordenar por</label>
-            <select class="input-field" [ngModel]="filters.orden" (ngModelChange)="setOrden($event)">
-              <option value="relevancia">Más relevantes</option>
-              <option value="precio_asc">Precio: menor a mayor</option>
-              <option value="precio_desc">Precio: mayor a menor</option>
-              <option value="calificacion">Mejor calificados</option>
-            </select>
-          </div>
         </div>
       </aside>
 
-      <div>
-        <div class="surface-card p-4 mb-4 flex flex-wrap items-center gap-2" role="status" aria-live="polite">
-          <span *ngIf="loading" class="material-symbols-outlined animate-spin text-primary text-[20px]" aria-hidden="true">progress_activity</span>
-          <span class="font-body-sm text-on-surface-variant tabular-nums">{{ loading ? 'Buscando...' : error ? 'No se pudieron cargar los resultados' : (total + ' resultados') }}</span>
-          <button *ngIf="filters.buscar" class="chip badge-soft-blue" (click)="clearSearch()">Búsqueda: {{filters.buscar}} <span class="material-symbols-outlined text-[14px]">close</span></button>
-          <button *ngIf="filters.categoriaId" class="chip badge-soft-blue" (click)="setCategoria(null)">{{ categoryLabel() }} <span class="material-symbols-outlined text-[14px]">close</span></button>
-          <button *ngIf="filters.soloOfertas" class="chip badge-soft-blue" (click)="toggleOfertas(false)">Ofertas <span class="material-symbols-outlined text-[14px]">close</span></button>
-          <div class="ml-auto flex items-center gap-2 lg:hidden">
-            <select class="input-field !w-auto !py-1.5 !text-[13px]" [ngModel]="filters.orden" (ngModelChange)="setOrden($event)">
-              <option value="relevancia">Relevancia</option>
-              <option value="precio_asc">Menor precio</option>
-              <option value="precio_desc">Mayor precio</option>
-              <option value="calificacion">Calificación</option>
-            </select>
-          </div>
+      <div class="min-w-0 space-y-6 lg:col-span-3 xl:col-span-4">
+        <div *ngIf="filters.buscar || filters.categoriaId || filters.soloOfertas" class="flex flex-wrap items-center gap-2">
+          <button *ngIf="filters.buscar" class="chip badge-soft-blue" (click)="clearSearch()">Búsqueda: {{filters.buscar}} <span class="material-symbols-outlined text-[16px]">close</span></button>
+          <button *ngIf="filters.categoriaId" class="chip badge-soft-blue" (click)="setCategoria(null)">{{ categoryLabel() }} <span class="material-symbols-outlined text-[16px]">close</span></button>
+          <button *ngIf="filters.soloOfertas" class="chip badge-soft-blue" (click)="toggleOfertas(false)">Ofertas <span class="material-symbols-outlined text-[16px]">close</span></button>
         </div>
 
-        <div *ngIf="error" class="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 font-body-sm flex items-start justify-between gap-3">
+        <div *ngIf="error" class="flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 font-body-sm text-red-700" role="alert">
           <span>{{error}}</span>
           <button class="font-label-md underline" (click)="retry()">Reintentar</button>
         </div>
 
-        <div *ngIf="loading && productos.length === 0" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div *ngIf="loading && productos.length === 0" class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
           @for (s of skeletons; track s) {
-            <div class="surface-card p-4 animate-pulse">
-              <div class="aspect-[4/3] rounded-lg bg-surface-container-low mb-4"></div>
-              <div class="h-4 bg-surface-container-low rounded w-3/4 mb-2"></div>
-              <div class="h-3 bg-surface-container-low rounded w-1/2 mb-3"></div>
-              <div class="h-6 bg-surface-container-low rounded w-1/3"></div>
+            <div class="animate-pulse overflow-hidden rounded-2xl border border-separator-hairline-light bg-white p-4">
+              <div class="mb-4 aspect-[4/3] rounded-xl bg-surface-container-low"></div>
+              <div class="mb-2 h-4 w-3/4 rounded bg-surface-container-low"></div>
+              <div class="mb-4 h-3 w-1/2 rounded bg-surface-container-low"></div>
+              <div class="h-7 w-1/3 rounded bg-surface-container-low"></div>
             </div>
           }
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 transition-opacity" [class.opacity-50]="loading" [attr.aria-busy]="loading" [attr.inert]="loading ? '' : null">
+        <div class="grid grid-cols-1 gap-5 transition-opacity sm:grid-cols-2 xl:grid-cols-3" [class.opacity-50]="loading" [attr.aria-busy]="loading" [attr.inert]="loading ? '' : null">
           @for (p of productos; track p.id) {
-            <article class="surface-card p-4 hover:shadow-md transition-all duration-200 flex flex-col h-full">
-              <a [routerLink]="['/producto', p.id]" class="relative block">
-                <div class="absolute left-2 top-2 z-10 flex flex-col gap-1.5">
-                  <span *ngIf="p.precioOferta != null" class="chip badge-soft-blue !text-[12px]">Oferta</span>
-                  <span *ngIf="p.stock>0 && p.stock<=5" class="chip badge-orange !text-[12px]">Últimas {{p.stock}}</span>
-                  <span *ngIf="p.stock<=0" class="chip badge-red !text-[12px]">Agotado</span>
+            <article class="group flex flex-col justify-between overflow-hidden rounded-2xl border border-separator-hairline-light bg-white shadow-sm transition-all duration-300 hover:border-[#C9A0F0] hover:shadow-xl hover:shadow-primary/10">
+              <div class="relative p-4">
+                <div class="absolute left-6 top-6 z-10 flex items-center gap-1.5">
+                  <span *ngIf="p.precioOferta != null" class="rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm">Oferta</span>
+                  <span *ngIf="descuento(p) as d" class="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700">-{{d}}%</span>
+                  <span *ngIf="p.stock>0 && p.stock<=5" class="chip badge-orange">Últimas {{p.stock}}</span>
+                  <span *ngIf="p.stock<=0" class="chip badge-red">Agotado</span>
                 </div>
-                <div class="aspect-[4/3] rounded-lg bg-surface-container-low/50 flex items-center justify-center p-4 mb-3 overflow-hidden">
-                  <img *ngIf="p.imagenPrincipalUrl" [src]="p.imagenPrincipalUrl" [alt]="p.nombre" loading="lazy" decoding="async" class="max-h-full max-w-full object-contain" />
-                  <span *ngIf="!p.imagenPrincipalUrl" class="material-symbols-outlined text-[32px] text-on-surface-variant/40">image</span>
+                <a [routerLink]="['/producto', p.id]" class="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl bg-system-background" [attr.aria-label]="'Ver ' + p.nombre">
+                  <img *ngIf="p.imagenPrincipalUrl" [src]="p.imagenPrincipalUrl" [alt]="p.nombre" loading="lazy" decoding="async" class="h-full w-full object-contain p-4 transition-transform duration-300 group-hover:scale-105" />
+                  <span *ngIf="!p.imagenPrincipalUrl" class="material-symbols-outlined text-[40px] text-on-surface-variant/40">image</span>
+                </a>
+                <div class="mt-4">
+                  <span class="text-[11px] font-bold uppercase tracking-wider text-primary">{{p.marca || p.categoriaNombre || 'Producto'}}</span>
+                  <a [routerLink]="['/producto', p.id]" class="mt-0.5 block text-sm font-bold leading-snug text-on-surface line-clamp-2 min-h-[2.6em] transition-colors hover:text-primary">{{p.nombre}}</a>
+                  <div class="mt-2 flex items-center gap-1.5">
+                    <span class="text-xs text-amber-400" aria-hidden="true">{{ estrellas(p) }}</span>
+                    <span class="text-xs font-medium text-on-surface-variant">{{ p.totalResenas ? (p.calificacionPromedio | number:'1.1-1') + ' (' + p.totalResenas + ')' : 'Sin reseñas' }}</span>
+                  </div>
+                  <div class="mt-3 flex items-baseline gap-2">
+                    <span class="text-2xl font-extrabold tracking-tight text-on-surface">\${{precioActual(p) | number:'1.2-2'}}</span>
+                    <span *ngIf="p.precioOferta != null" class="text-xs font-semibold text-on-surface-variant line-through">\${{p.precioBase | number:'1.2-2'}}</span>
+                  </div>
                 </div>
-              </a>
-              <a [routerLink]="['/producto', p.id]" class="font-title-md hover:text-primary transition-colors line-clamp-2 min-h-[44px]">{{p.nombre}}</a>
-              <div class="font-body-sm text-on-surface-variant mt-1">{{p.marca || p.categoriaNombre || 'Producto'}}</div>
-              <div class="mt-2 flex items-baseline gap-2">
-                <span class="font-headline-md tabular-nums">\${{precioActual(p) | number:'1.2-2'}}</span>
-                <span *ngIf="p.precioOferta != null" class="font-body-sm text-on-surface-variant line-through tabular-nums">\${{p.precioBase | number:'1.2-2'}}</span>
               </div>
-              <div class="mt-1 font-body-sm" [ngClass]="p.stock>0 ? 'text-status-delivered' : 'text-status-urgent'">
-                {{ p.stock>0 ? 'Disponible' : 'Agotado' }}
-              </div>
-              <div class="mt-auto pt-4 flex gap-2">
-                <a [routerLink]="['/producto', p.id]" class="btn-ghost flex-1 !py-2">Ver detalle</a>
-                <button class="btn-primary flex-1 !py-2" [disabled]="p.stock<=0" (click)="add(p)">Agregar</button>
+              <div class="p-4 pt-0">
+                <button class="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-white shadow-sm shadow-primary/20 transition-all hover:bg-deep disabled:cursor-not-allowed disabled:opacity-45" [disabled]="p.stock<=0" (click)="add(p)">
+                  <span class="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+                  <span>{{ p.stock>0 ? 'Agregar al carrito' : 'Sin stock' }}</span>
+                </button>
               </div>
             </article>
           }
         </div>
 
-        <div *ngIf="!loading && productos.length===0 && !error" class="surface-card p-10 text-center">
+        <div *ngIf="!loading && productos.length===0 && !error" class="rounded-2xl border border-separator-hairline-light bg-white p-12 text-center">
           <span class="material-symbols-outlined text-[40px] text-on-surface-variant/40">search_off</span>
           <p class="font-title-md mt-3">No encontramos productos</p>
-          <p class="font-body-sm text-on-surface-variant mt-1">Prueba con otros términos o ajusta los filtros.</p>
-          <button class="btn-ghost mt-4" (click)="resetFilters()">Limpiar filtros</button>
+          <p class="font-body-sm mt-1 text-on-surface-variant">Prueba con otros términos o quita algún filtro.</p>
+          <button class="btn-ghost mt-5" (click)="resetFilters()">Limpiar filtros</button>
         </div>
 
-        <div *ngIf="!loading && total>tamanoPagina" class="mt-8 flex items-center justify-center gap-3">
-          <button class="btn-ghost !py-2" [disabled]="pagina<=1" (click)="changePage(pagina-1)">Anterior</button>
-          <span class="font-body-sm text-on-surface-variant tabular-nums">Página {{pagina}} de {{totalPaginas}}</span>
-          <button class="btn-ghost !py-2" [disabled]="pagina>=totalPaginas" (click)="changePage(pagina+1)">Siguiente</button>
-        </div>
+        <nav *ngIf="!loading && total>tamanoPagina" class="mt-8 flex flex-col items-center justify-between gap-4 border-t border-separator-hairline-light pt-6 sm:flex-row" aria-label="Paginación">
+          <span class="text-xs font-medium text-on-surface-variant">Página <strong class="text-on-surface">{{pagina}}</strong> de <strong class="text-on-surface">{{totalPaginas}}</strong></span>
+          <div class="flex items-center gap-1.5">
+            <button class="rounded-lg border border-separator-hairline-light p-2 text-on-surface hover:bg-surface-container-low disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent" [disabled]="pagina<=1" (click)="changePage(pagina-1)" aria-label="Página anterior"><span class="material-symbols-outlined text-[18px]">chevron_left</span></button>
+            @for (n of paginas(); track n) {
+              <button class="h-9 w-9 rounded-lg text-xs" [ngClass]="n===pagina ? 'bg-primary font-bold text-white shadow-sm shadow-primary/30' : 'font-semibold text-on-surface hover:bg-surface-container-low'" (click)="changePage(n)" [attr.aria-current]="n===pagina ? 'page' : null">{{n}}</button>
+            }
+            <button class="rounded-lg border border-separator-hairline-light p-2 text-on-surface hover:bg-surface-container-low disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent" [disabled]="pagina>=totalPaginas" (click)="changePage(pagina+1)" aria-label="Página siguiente"><span class="material-symbols-outlined text-[18px]">chevron_right</span></button>
+          </div>
+        </nav>
       </div>
     </div>
   </section>
@@ -182,6 +194,7 @@ export class CatalogPage implements OnInit, OnDestroy {
   private cancelDraft$ = new Subject<void>();
   private lastQueryKey = '';
 
+  private readonly toast = inject(ToastService);
   constructor(private catalog: CatalogService, private cart: CartService, private route: ActivatedRoute, private router: Router) {}
 
   ngOnInit() {
@@ -258,6 +271,19 @@ export class CatalogPage implements OnInit, OnDestroy {
   }
   get totalPaginas() { return Math.max(1, Math.ceil(this.total / this.tamanoPagina)); }
   precioActual(p: Producto) { return p.precioOferta ?? p.precioBase; }
+  /** Porcentaje de descuento de una oferta (0 si no hay). */
+  descuento(p: Producto): number {
+    return p.precioOferta != null && p.precioBase > 0 ? Math.round((1 - p.precioOferta / p.precioBase) * 100) : 0;
+  }
+  estrellas(p: Producto): string {
+    const n = Math.round(p.calificacionPromedio || 0);
+    return '★'.repeat(n) + '☆'.repeat(5 - n);
+  }
+  /** Números de página a mostrar (ventana de 5 alrededor de la actual). */
+  paginas(): number[] {
+    const total = this.totalPaginas, ini = Math.max(1, Math.min(this.pagina - 2, total - 4)), fin = Math.min(total, ini + 4);
+    return Array.from({ length: fin - ini + 1 }, (_, i) => ini + i);
+  }
 
   private buildParams() {
     const params: any = { ...this.filters, pagina: this.pagina, tamanoPagina: this.tamanoPagina };
@@ -276,6 +302,13 @@ export class CatalogPage implements OnInit, OnDestroy {
 
   submitSearch() { this.filters.buscar = (this.searchDraft || '').trim(); this.pagina = 1; this.syncUrl(); }
   onSearchInput(v: string) { this.searchDraft = v; this.search$.next(v); }
+  precioError(): string {
+    const { precioMin: a, precioMax: b } = this.filters as any;
+    if (a != null && +a < 0) return 'El precio mínimo no puede ser negativo.';
+    if (b != null && +b < 0) return 'El precio máximo no puede ser negativo.';
+    if (a != null && b != null && +a > +b) return 'El precio mínimo no puede ser mayor que el máximo.';
+    return '';
+  }
   setPrecioMin(v: any) { this.filters.precioMin = v === '' ? null : v; this.price$.next(); }
   setPrecioMax(v: any) { this.filters.precioMax = v === '' ? null : v; this.price$.next(); }
   applyFilters() { this.pagina = 1; this.syncUrl(); }
@@ -304,5 +337,5 @@ export class CatalogPage implements OnInit, OnDestroy {
     this.router.navigate([], { relativeTo: this.route, queryParams: qp });
   }
 
-  add(p: Producto) { this.cart.addItem(p.id, 1).subscribe({ next: () => {}, error: (e) => this.error = e?.userMessage || 'No se pudo agregar al carrito' }); }
+  add(p: Producto) { this.cart.addItem(p.id, 1, { nombre: p.nombre, marca: p.marca || p.categoriaNombre, imagenUrl: p.imagenPrincipalUrl, precio: this.precioActual(p), precioBase: p.precioOferta != null ? p.precioBase : null }).subscribe({ next: () => {}, error: (e) => { this.error = e?.userMessage || 'No se pudo agregar al carrito'; this.toast.error(this.error); } }); }
 }

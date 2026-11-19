@@ -35,7 +35,7 @@ describe('App', () => {
     const links = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('a'));
     expect(links.find(link => link.textContent?.trim() === 'Hogar y cocina')?.getAttribute('href'))
       .toBe('/productos?categoriaId=42');
-    expect(links.find(link => link.textContent?.trim() === 'Ofertas')?.getAttribute('href'))
+    expect(links.find(link => link.textContent?.trim().endsWith('Ofertas'))?.getAttribute('href'))
       .toBe('/productos?soloOfertas=true');
   });
 });

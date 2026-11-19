@@ -5,24 +5,22 @@
     <div class="store-brand">
       <a routerLink="/" (click)="showMenu=false" class="store-brand-link">
         <span class="store-brand-mark"><span class="material-symbols-outlined">storefront</span></span>
-        <span><strong>RouteOS</strong><small>TIENDA ONLINE</small></span>
+        <span><strong>RouteOS</strong><small>Tienda</small></span>
       </a>
-      <span class="store-version">CLIENTE</span>
     </div>
 
     <nav class="store-nav" aria-label="Navegación principal">
-      <p class="store-nav-label">TIENDA</p>
+      <p class="store-nav-label">Tienda</p>
       <a routerLink="/" [class.store-nav-active]="isCatalogPage() && !isOffersPage()" (click)="showMenu=false"><span class="material-symbols-outlined">space_dashboard</span>Catálogo</a>
       <a routerLink="/productos" [queryParams]="{soloOfertas: true}" [class.store-nav-active]="isOffersPage()" (click)="showMenu=false"><span class="material-symbols-outlined">sell</span>Ofertas</a>
-      <a routerLink="/carrito" routerLinkActive="store-nav-active" (click)="showMenu=false"><span class="material-symbols-outlined">shopping_bag</span>Mi carrito<span *ngIf="cart.count()>0" class="store-count">{{cart.count()}}</span></a>
 
-      <p class="store-nav-label store-nav-label-spaced">MI CUENTA</p>
+      <p class="store-nav-label store-nav-label-spaced">Mi cuenta</p>
       <a routerLink="/mis-pedidos" routerLinkActive="store-nav-active" (click)="showMenu=false"><span class="material-symbols-outlined">receipt_long</span>Mis pedidos</a>
       <a *ngIf="!auth.isAuthenticated(); else accountShortcut" [routerLink]="['/login']" [queryParams]="{returnUrl: currentUrl()}" routerLinkActive="store-nav-active" (click)="showMenu=false"><span class="material-symbols-outlined">person</span>Ingresar</a>
-      <ng-template #accountShortcut><a routerLink="/" (click)="showMenu=false"><span class="material-symbols-outlined">person</span>Mi cuenta</a></ng-template>
+      <ng-template #accountShortcut><a routerLink="/mi-cuenta" routerLinkActive="store-nav-active" (click)="showMenu=false"><span class="material-symbols-outlined">person</span>Mi cuenta</a></ng-template>
 
       <div class="store-category-heading">
-        <p class="store-nav-label">DEPARTAMENTOS</p>
+        <p class="store-nav-label">Departamentos</p>
         <a routerLink="/productos" aria-label="Ver todos los departamentos" (click)="showMenu=false">Ver todos</a>
       </div>
       <div class="store-departments">
@@ -33,7 +31,6 @@
     </nav>
 
     <div class="store-sidebar-footer">
-      <div class="store-support-pill"><span></span><div><strong>Compra protegida</strong><small>Atención para clientes</small></div></div>
       <div class="store-user-card">
         <span class="store-avatar">{{auth.isAuthenticated() ? (auth.user()?.nombreCompleto?.charAt(0) || 'C') : 'C'}}</span>
         <div class="store-user-copy"><strong>{{auth.user()?.nombreCompleto || 'Cliente invitado'}}</strong><small>{{auth.isAuthenticated() ? 'Cuenta activa' : 'Explora la tienda'}}</small></div>
@@ -44,23 +41,29 @@
 
   <div class="store-main-column">
     <header class="store-topbar">
-      <div class="store-topbar-leading">
         <button class="store-menu-button" aria-label="Abrir navegación" (click)="toggleMenu()"><span class="material-symbols-outlined">menu</span></button>
-        <div class="store-breadcrumb"><span>RouteOS</span><span class="material-symbols-outlined">chevron_right</span><strong>{{pageLabel()}}</strong><span class="store-online-chip"><i></i> Tienda en línea</span></div>
-      </div>
-      <form *ngIf="!isCatalogPage()" class="store-top-search" (ngSubmit)="onSearch()">
+        <form class="store-top-search" (ngSubmit)="onSearch()" role="search">
         <span class="material-symbols-outlined">search</span>
         <input [(ngModel)]="searchText" name="searchText" aria-label="Buscar productos" placeholder="Buscar productos, marcas y categorías" />
-        <button type="submit" aria-label="Buscar"><span class="material-symbols-outlined">arrow_forward</span></button>
+        <button type="submit" aria-label="Buscar">Buscar</button>
       </form>
       <div class="store-top-actions">
+        <button type="button" class="store-coverage" (click)="coverage.abrirSelector()" [attr.aria-label]="'Ubicación de entrega: ' + (coverage.zona()?.nombre || 'sin elegir')">
+          <span class="material-symbols-outlined">location_on</span>
+          <span class="store-coverage-copy">
+            <small>Entregar en</small>
+            <strong>{{ coverage.estado()==='cubierta' ? coverage.zona()?.nombre : coverage.estado()==='fuera' ? 'Sin cobertura' : 'Elegir ubicación' }}</strong>
+          </span>
+        </button>
         <a routerLink="/carrito" class="store-top-cart"><span class="material-symbols-outlined">shopping_cart</span><span>Carrito</span><b *ngIf="cart.count()>0">{{cart.count()}}</b></a>
       </div>
     </header>
 
     <main class="store-content">
+      <app-toast-container />
+      <app-coverage-picker *ngIf="coverage.selectorAbierto()" />
       <router-outlet />
-      <footer class="store-footer"><span>RouteOS · Tienda de clientes</span><span>Compra simple y seguimiento claro</span></footer>
+      <footer class="store-footer"><span>RouteOS · Tienda</span><span>Entregas a domicilio y retiro en tienda</span></footer>
     </main>
   </div>
 </div>

@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { ToastService } from '../../core/services/toast.service';
 import { RouterLink } from '@angular/router';
 
 @Component({
@@ -17,4 +18,6 @@ import { RouterLink } from '@angular/router';
   </section>
   `,
 })
-export class PayPalCancelPage {}
+export class PayPalCancelPage {
+  constructor() { inject(ToastService).info('Cancelaste el pago en PayPal. No se realizó ningún cobro.'); }
+}

@@ -30,6 +30,7 @@ describe('CartPage (Unit Test)', () => {
     cartMock = {
       items: vi.fn().mockReturnValue(sampleItems),
       subtotal: vi.fn().mockReturnValue(40),
+      count: vi.fn().mockReturnValue(2),
       cart: vi.fn().mockReturnValue({ items: sampleItems, subtotal: 40, requiereRevision: false }),
       cotizacion: vi.fn().mockReturnValue(of({ items: sampleItems, subtotal: 40 })),
       load: vi.fn().mockReturnValue(of({ items: sampleItems, subtotal: 40 })),

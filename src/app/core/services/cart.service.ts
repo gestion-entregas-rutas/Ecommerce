@@ -1,13 +1,16 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, computed, signal } from '@angular/core';
-import { tap, timeout } from 'rxjs';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { tap } from 'rxjs';
+import { timeoutEs } from '../errors/error-messages';
 import { environment } from '../../../environments/environment';
 import { Carrito, CarritoItem } from '../models/api.models';
 import { CartTokenService } from './cart-token.service';
 import { StorageService } from './storage.service';
+import { ToastProducto, ToastService } from './toast.service';
 
 @Injectable({ providedIn: 'root' })
 export class CartService {
+  private readonly toast = inject(ToastService);
   private readonly cartSignal = signal<Carrito | null>(null);
   readonly cart = this.cartSignal.asReadonly();
   readonly items = computed(() => this.cartSignal()?.items ?? []);
@@ -29,14 +32,14 @@ export class CartService {
 
   load() {
     return this.http.get<Carrito>(`${environment.apiBaseUrl}/carrito`).pipe(
-      timeout(12000),
+      timeoutEs(12000),
       tap((cart) => this.setCart(cart)),
     );
   }
 
-  addItem(productoId: string, cantidad = 1) {
+  addItem(productoId: string, cantidad = 1, info?: Omit<ToastProducto, 'cantidad'>) {
     return this.http.post<Carrito>(`${environment.apiBaseUrl}/carrito/items`, { productoId, cantidad }).pipe(
-      tap((cart) => this.setCart(cart)),
+      tap((cart) => { this.setCart(cart); if (info) this.toast.cartAdded({ ...info, cantidad }, this.count()); else this.toast.success('Producto agregado correctamente al carrito.'); }),
     );
   }
 
@@ -48,7 +51,7 @@ export class CartService {
 
   removeItem(productoId: string) {
     return this.http.delete<Carrito>(`${environment.apiBaseUrl}/carrito/items/${productoId}`).pipe(
-      tap((cart) => this.setCart(cart)),
+      tap((cart) => { this.setCart(cart); this.toast.info('Producto eliminado del carrito.'); }),
     );
   }
 

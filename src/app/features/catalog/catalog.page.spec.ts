@@ -60,7 +60,7 @@ describe('Catalog filters', () => {
     await fixture.whenStable();
     expect(page.error).toBe('');
     expect(page.categoryLabel()).toBe('Hogar');
-    expect(fixture.nativeElement.textContent).toContain('0 resultados');
+    expect(fixture.nativeElement.textContent).toContain('0 productos');
     expect(fixture.nativeElement.textContent).toContain('No encontramos productos');
     expect(fixture.nativeElement.textContent).not.toContain('Reintentar');
   });
@@ -126,7 +126,7 @@ describe('Catalog filters', () => {
     await fixture.whenStable();
     expect(page.loading).toBe(false);
     expect(page.error).toBeTruthy();
-    expect(fixture.nativeElement.textContent).not.toContain('0 resultados');
+    expect(fixture.nativeElement.textContent).not.toContain('0 productos');
     page.retry();
     respond(productsRequest());
     await fixture.whenStable();

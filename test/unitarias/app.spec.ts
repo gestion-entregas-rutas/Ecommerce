@@ -40,7 +40,7 @@ describe('App Component (Unit Test)', () => {
       links.find((l) => l.textContent?.trim() === 'Hogar y cocina')?.getAttribute('href')
     ).toBe('/productos?categoriaId=42');
     expect(
-      links.find((l) => l.textContent?.trim() === 'Ofertas')?.getAttribute('href')
+      links.find((l) => l.textContent?.trim().endsWith('Ofertas'))?.getAttribute('href')
     ).toBe('/productos?soloOfertas=true');
   });
 });
