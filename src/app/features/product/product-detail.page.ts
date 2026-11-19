@@ -1,4 +1,5 @@
 import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
+import { ImgFallbackDirective } from '../../core/ui/img-fallback.directive';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -13,7 +14,7 @@ import { FieldErrorComponent, FormValidator, compose, maxLen, minLen, required }
 
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule, FieldErrorComponent, BackLinkComponent],
+  imports: [CommonModule, FormsModule, FieldErrorComponent, BackLinkComponent, ImgFallbackDirective],
   template: `
   <div *ngIf="loading" class="surface-card p-10 text-center text-on-surface-variant">Cargando producto…</div>
   <div *ngIf="error" class="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 font-body-sm" role="alert">{{error}}</div>
@@ -24,12 +25,12 @@ import { FieldErrorComponent, FormValidator, compose, maxLen, minLen, required }
       <section aria-label="Imágenes del producto" class="grid grid-cols-1 gap-3 sm:grid-cols-[72px_1fr] sm:items-start">
         <div class="order-2 flex gap-2 overflow-auto sm:order-1 sm:flex-col">
           <button *ngFor="let m of mediaList()" type="button" class="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-xl border-2 bg-surface-container-lowest p-1" [class.border-primary]="selectedMedia===m" [class.border-separator-hairline-light]="selectedMedia!==m" (click)="selectedMedia=m" aria-label="Ver imagen">
-            <img *ngIf="m.tipo!=='video'" [src]="m.url" alt="" class="h-full w-full object-contain" />
+            <img imgFallback *ngIf="m.tipo!=='video'" [src]="m.url" alt="" class="h-full w-full object-contain" />
             <span *ngIf="m.tipo==='video'" class="material-symbols-outlined text-on-surface-variant">play_circle</span>
           </button>
         </div>
         <div class="surface-card order-1 flex aspect-square items-center justify-center p-8 sm:order-2">
-          <img *ngIf="selectedMedia?.tipo!=='video'" [src]="selectedMedia?.url || producto.imagenPrincipalUrl" [alt]="producto.nombre" class="max-h-full max-w-full object-contain" />
+          <img imgFallback *ngIf="selectedMedia?.tipo!=='video'" [src]="selectedMedia?.url || producto.imagenPrincipalUrl" [alt]="producto.nombre" class="max-h-full max-w-full object-contain" />
           <video *ngIf="selectedMedia?.tipo==='video'" [src]="selectedMedia?.url" controls class="max-h-full max-w-full rounded-lg"></video>
         </div>
       </section>

@@ -1,4 +1,5 @@
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
+import { ImgFallbackDirective } from '../../core/ui/img-fallback.directive';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -17,7 +18,7 @@ import { CheckoutResponse } from '../../core/models/api.models';
 
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule, FieldErrorComponent, BackLinkComponent],
+  imports: [CommonModule, FormsModule, FieldErrorComponent, BackLinkComponent, ImgFallbackDirective],
   template: `
   <section class="space-y-7 pb-4">
     <!-- Cabecera -->
@@ -263,7 +264,7 @@ import { CheckoutResponse } from '../../core/models/api.models';
           <ul class="divide-y divide-slate-100">
             <li *ngFor="let i of cart.items(); let first=first" class="flex items-center gap-3.5 py-3" [class.pt-0]="first">
               <div class="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-separator-hairline-light bg-system-background p-1">
-                <img *ngIf="i.imagenPrincipalUrl || i.imagenUrl" [src]="i.imagenPrincipalUrl || i.imagenUrl" [alt]="i.nombre || ''" class="h-full w-full object-contain" />
+                <img imgFallback *ngIf="i.imagenPrincipalUrl || i.imagenUrl" [src]="i.imagenPrincipalUrl || i.imagenUrl" [alt]="i.nombre || ''" class="h-full w-full object-contain" />
                 <span *ngIf="!(i.imagenPrincipalUrl || i.imagenUrl)" class="material-symbols-outlined text-on-surface-variant">inventory_2</span>
                 <span class="absolute bottom-1 right-1 rounded bg-slate-900/80 px-1.5 text-[10px] font-bold text-white">x{{i.cantidad}}</span>
               </div>

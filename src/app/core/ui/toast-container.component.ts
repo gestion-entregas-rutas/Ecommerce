@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { ImgFallbackDirective } from './img-fallback.directive';
 import { DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ToastService, ToastType } from '../services/toast.service';
@@ -14,7 +15,7 @@ const TITULOS: Record<ToastType, string> = {
 @Component({
   standalone: true,
   selector: 'app-toast-container',
-  imports: [RouterLink, DecimalPipe],
+  imports: [RouterLink, DecimalPipe, ImgFallbackDirective],
   template: `
   <div class="pointer-events-none fixed right-4 top-[84px] z-[1000] flex w-[min(94vw,448px)] flex-col gap-3 sm:right-6" aria-live="polite" aria-atomic="false">
     @for (t of toasts.toasts(); track t.id) {
@@ -47,7 +48,7 @@ const TITULOS: Record<ToastType, string> = {
           @if (t.producto; as p) {
             <div class="mt-3.5 flex items-center gap-3.5 rounded-xl border border-separator-hairline-light bg-system-background p-2.5">
               <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-separator-hairline-light bg-white p-1.5">
-                @if (p.imagenUrl) { <img [src]="p.imagenUrl" [alt]="p.nombre" class="h-full w-full object-contain" /> }
+                @if (p.imagenUrl) { <img imgFallback [src]="p.imagenUrl" [alt]="p.nombre" class="h-full w-full object-contain" /> }
                 @else { <span class="material-symbols-outlined text-on-surface-variant">inventory_2</span> }
               </div>
               <div class="min-w-0 flex-1">

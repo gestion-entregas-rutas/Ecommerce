@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { ImgFallbackDirective } from '../../core/ui/img-fallback.directive';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -11,7 +12,7 @@ import { ToastService } from '../../core/services/toast.service';
 
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, FieldErrorComponent],
+  imports: [CommonModule, FormsModule, RouterLink, FieldErrorComponent, ImgFallbackDirective],
   template: `
   <section>
     <nav class="mb-2 flex items-center gap-1.5 text-xs font-medium text-on-surface-variant" aria-label="Ruta de navegación">
@@ -120,7 +121,7 @@ import { ToastService } from '../../core/services/toast.service';
                   <span *ngIf="p.stock<=0" class="chip badge-red">Agotado</span>
                 </div>
                 <a [routerLink]="['/producto', p.id]" class="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl bg-system-background" [attr.aria-label]="'Ver ' + p.nombre">
-                  <img *ngIf="p.imagenPrincipalUrl" [src]="p.imagenPrincipalUrl" [alt]="p.nombre" loading="lazy" decoding="async" class="h-full w-full object-contain p-4 transition-transform duration-300 group-hover:scale-105" />
+                  <img imgFallback *ngIf="p.imagenPrincipalUrl" [src]="p.imagenPrincipalUrl" [alt]="p.nombre" loading="lazy" decoding="async" class="h-full w-full object-contain p-4 transition-transform duration-300 group-hover:scale-105" />
                   <span *ngIf="!p.imagenPrincipalUrl" class="material-symbols-outlined text-[40px] text-on-surface-variant/40">image</span>
                 </a>
                 <div class="mt-4">
