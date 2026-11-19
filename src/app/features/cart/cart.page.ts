@@ -1,4 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
+import { ImgFallbackDirective } from '../../core/ui/img-fallback.directive';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { CartService } from '../../core/services/cart.service';
@@ -8,7 +9,7 @@ import { BackLinkComponent } from '../../core/ui/back-link.component';
 
 @Component({
   standalone: true,
-  imports: [CommonModule, RouterLink, BackLinkComponent],
+  imports: [CommonModule, RouterLink, BackLinkComponent, ImgFallbackDirective],
   template: `
   <section>
     <div class="flex flex-col justify-between gap-4 pb-6 md:flex-row md:items-center">
@@ -61,7 +62,7 @@ import { BackLinkComponent } from '../../core/ui/back-link.component';
         <!-- Productos -->
         <article *ngFor="let item of cart.items()" class="relative flex flex-col gap-5 rounded-2xl border border-separator-hairline-light bg-white p-5 shadow-sm transition-shadow duration-300 hover:shadow-md sm:flex-row sm:p-6">
           <div class="relative flex h-36 w-full shrink-0 items-center justify-center overflow-hidden rounded-xl bg-system-background sm:w-36">
-            <img *ngIf="item.imagenPrincipalUrl || item.imagenUrl" [src]="item.imagenPrincipalUrl || item.imagenUrl" [alt]="item.nombre || ''" class="h-full w-full object-contain p-3" />
+            <img imgFallback *ngIf="item.imagenPrincipalUrl || item.imagenUrl" [src]="item.imagenPrincipalUrl || item.imagenUrl" [alt]="item.nombre || ''" class="h-full w-full object-contain p-3" />
             <span *ngIf="!(item.imagenPrincipalUrl || item.imagenUrl)" class="material-symbols-outlined text-[36px] text-on-surface-variant/40">inventory_2</span>
             <span *ngIf="descuento(item) as d" class="absolute left-2 top-2 rounded-md bg-white/90 px-2 py-0.5 text-[11px] font-bold text-primary">-{{d}}%</span>
           </div>

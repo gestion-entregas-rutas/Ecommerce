@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ImgFallbackDirective } from '../../core/ui/img-fallback.directive';
 import { DecimalPipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
@@ -11,7 +12,7 @@ import { pedidoEsRetiro, pedidoGrupo, pedidoPaso, pedidoPasos } from '../../core
 
 @Component({
   standalone: true,
-  imports: [RouterLink, DecimalPipe, BackLinkComponent],
+  imports: [RouterLink, DecimalPipe, BackLinkComponent, ImgFallbackDirective],
   template: `
   <section class="space-y-6 pb-4">
     <!-- Cabecera -->
@@ -148,7 +149,7 @@ import { pedidoEsRetiro, pedidoGrupo, pedidoPaso, pedidoPasos } from '../../core
               @for (i of cart.items().slice(0, 4); track i.productoId) {
                 <div class="flex items-center gap-3 rounded-2xl bg-system-background p-3 transition-colors hover:bg-primary-fixed/40">
                   <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1">
-                    @if (i.imagenPrincipalUrl || i.imagenUrl) { <img [src]="i.imagenPrincipalUrl || i.imagenUrl" [alt]="i.nombre || ''" class="h-full w-full object-contain" /> }
+                    @if (i.imagenPrincipalUrl || i.imagenUrl) { <img imgFallback [src]="i.imagenPrincipalUrl || i.imagenUrl" [alt]="i.nombre || ''" class="h-full w-full object-contain" /> }
                     @else { <span class="material-symbols-outlined text-on-surface-variant">inventory_2</span> }
                   </div>
                   <div class="min-w-0 flex-1">

@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ImgFallbackDirective } from '../../core/ui/img-fallback.directive';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -15,7 +16,7 @@ interface LineaPedido { nombre: string; cantidad: number; precio: number; subtot
 
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, BackLinkComponent],
+  imports: [CommonModule, FormsModule, RouterLink, BackLinkComponent, ImgFallbackDirective],
   template: `
   <section class="space-y-8">
     <div>
@@ -148,7 +149,7 @@ interface LineaPedido { nombre: string; cantidad: number; precio: number; subtot
           <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div *ngFor="let l of lineas(o)" class="flex items-center gap-3.5 rounded-xl border border-slate-100 bg-system-background p-3">
               <div class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-separator-hairline-light bg-white p-1">
-                <img *ngIf="l.imagenUrl" [src]="l.imagenUrl" [alt]="l.nombre" class="h-full w-full object-contain" />
+                <img imgFallback *ngIf="l.imagenUrl" [src]="l.imagenUrl" [alt]="l.nombre" class="h-full w-full object-contain" />
                 <span *ngIf="!l.imagenUrl" class="material-symbols-outlined text-on-surface-variant">inventory_2</span>
               </div>
               <div class="min-w-0 flex-1">
