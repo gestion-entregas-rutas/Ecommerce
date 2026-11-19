@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { catchError, tap, throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { CartTokenService } from '../services/cart-token.service';
+import { mensajeDeError } from '../errors/error-messages';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
@@ -23,8 +24,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       const body = err.error || {};
       const enriched = {
         ...err,
-        userMessage:
-          body?.mensaje || body?.message || body?.detail || body?.title || 'Ocurrió un error al procesar la solicitud.',
+        userMessage: mensajeDeError(err),
         code: body?.codigo || body?.code,
         problem: body,
       } as HttpErrorResponse & { userMessage: string; code?: string; problem: any };

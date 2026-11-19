@@ -1,3 +1,4 @@
+import { provideRouter } from '@angular/router';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { OrdersPage } from '../../src/app/features/orders/orders.page';
@@ -40,7 +41,7 @@ describe('OrdersPage (Unit Test)', () => {
 
     await TestBed.configureTestingModule({
       imports: [OrdersPage],
-      providers: [{ provide: OrderService, useValue: ordersMock }],
+      providers: [{ provide: OrderService, useValue: ordersMock }, provideRouter([])],
     }).compileComponents();
 
     fixture = TestBed.createComponent(OrdersPage);

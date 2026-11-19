@@ -2,51 +2,40 @@ import { Component } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgIf } from '@angular/common';
+import { FieldErrorComponent, FormValidator, claveNueva, correo, nombrePersona, telefono } from '../../../core/validation/form-rules';
 import { AuthService } from '../../../core/services/auth.service';
 import { CartService } from '../../../core/services/cart.service';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, RouterLink, NgIf],
+  imports: [FormsModule, RouterLink, NgIf, FieldErrorComponent],
   template: `
-  <div class="fade-in py-4 sm:py-8">
-    <div class="mx-auto grid max-w-5xl overflow-hidden surface-card lg:grid-cols-[1fr_460px]">
-      <div class="hidden lg:flex flex-col justify-between bg-surface-container-low p-10 border-r border-separator-hairline-light">
-        <div>
-          <a routerLink="/" class="inline-flex items-center gap-2 font-title-md text-primary"><span class="material-symbols-outlined">storefront</span> Tienda</a>
-          <h1 class="font-headline-lg mt-10">Crea tu cuenta</h1>
-          <p class="mt-3 text-on-surface-variant font-body-md">Regístrate en minutos para comprar, hacer seguimiento a tus pedidos y guardar tu carrito.</p>
-        </div>
-        <ul class="space-y-3 font-body-sm text-on-surface-variant">
-          <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-status-delivered">check_circle</span> Historial y seguimiento de compras</li>
-          <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-status-delivered">check_circle</span> Checkout más ágil</li>
-          <li class="flex items-center gap-2"><span class="material-symbols-outlined text-[18px] text-status-delivered">check_circle</span> Tu carrito de invitado se une a tu cuenta</li>
-        </ul>
-      </div>
-
-      <div class="p-6 sm:p-10 bg-surface-container-lowest">
-        <div class="lg:hidden mb-6">
-          <a routerLink="/" class="inline-flex items-center gap-2 font-title-md text-primary"><span class="material-symbols-outlined">storefront</span> Tienda</a>
-        </div>
-        <h2 class="font-headline-md">Crear cuenta</h2>
+  <div class="py-2 sm:py-6">
+    <div class="mx-auto max-w-md surface-card">
+      <div class="p-6 sm:p-8">
+        <h1 class="page-title !text-[26px]">Crear cuenta</h1>
         <p class="font-body-sm text-on-surface-variant mt-1">Completa tus datos para comenzar.</p>
 
-        <form (ngSubmit)="submit()" class="mt-6 space-y-4">
+        <form (ngSubmit)="submit()" class="mt-6 space-y-4" novalidate>
           <div>
-            <label class="font-label-md block mb-1.5">Nombre completo</label>
-            <input class="input-field" [(ngModel)]="form.nombreCompleto" name="nombreCompleto" placeholder="Tu nombre" required />
+            <label class="field-label">Nombre completo</label>
+            <input class="input-field" [class.!border-red-500]="v.error(form,'nombreCompleto')" [(ngModel)]="form.nombreCompleto" (blur)="v.tocar('nombreCompleto')" name="nombreCompleto" placeholder="Tu nombre" required />
+            <app-field-error [message]="v.error(form,'nombreCompleto')" />
           </div>
           <div>
-            <label class="font-label-md block mb-1.5">Correo</label>
-            <input class="input-field" [(ngModel)]="form.correo" name="correo" type="email" autocomplete="email" placeholder="correo@ejemplo.com" required />
+            <label class="field-label">Correo</label>
+            <input class="input-field" [class.!border-red-500]="v.error(form,'correo')" [(ngModel)]="form.correo" (blur)="v.tocar('correo')" name="correo" type="email" autocomplete="email" placeholder="correo@ejemplo.com" required />
+            <app-field-error [message]="v.error(form,'correo')" />
           </div>
           <div>
-            <label class="font-label-md block mb-1.5">Teléfono</label>
-            <input class="input-field" [(ngModel)]="form.telefono" name="telefono" placeholder="0999999999" required />
+            <label class="field-label">Teléfono</label>
+            <input class="input-field" [class.!border-red-500]="v.error(form,'telefono')" [(ngModel)]="form.telefono" (blur)="v.tocar('telefono')" name="telefono" placeholder="0999999999" required />
+            <app-field-error [message]="v.error(form,'telefono')" />
           </div>
           <div>
-            <label class="font-label-md block mb-1.5">Contraseña</label>
-            <input class="input-field" [(ngModel)]="form.password" name="password" type="password" autocomplete="new-password" placeholder="Crea una contraseña" required />
+            <label class="field-label">Contraseña</label>
+            <input class="input-field" [class.!border-red-500]="v.error(form,'password')" [(ngModel)]="form.password" (blur)="v.tocar('password')" name="password" type="password" autocomplete="new-password" placeholder="Mínimo 12 caracteres" required />
+            <app-field-error [message]="v.error(form,'password')" />
           </div>
 
           <div *ngIf="error" class="rounded-xl border border-red-200 bg-red-50 p-3 font-body-sm text-red-700 flex gap-2">
@@ -66,11 +55,18 @@ import { CartService } from '../../../core/services/cart.service';
 })
 export class RegistroPage {
   form = { nombreCompleto: '', correo: '', telefono: '', password: '' };
+  v = new FormValidator<typeof this.form>({
+    nombreCompleto: nombrePersona('El nombre'),
+    correo,
+    telefono,
+    password: claveNueva,
+  });
   loading = false; error = ''; returnUrl = '/';
   constructor(private auth: AuthService, private cart: CartService, private route: ActivatedRoute, private router: Router) {
     this.returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/';
   }
   submit() {
+    if (!this.v.validar(this.form)) return;
     this.loading = true; this.error = '';
     this.auth.registroCliente(this.form).subscribe({
       next: () => {

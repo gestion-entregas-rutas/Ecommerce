@@ -1,8 +1,9 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { CartService } from '../../core/services/cart.service';
 import { OrderService } from '../../core/services/order.service';
+import { ToastService } from '../../core/services/toast.service';
 import { CheckoutResponse } from '../../core/models/api.models';
 
 @Component({
@@ -63,6 +64,7 @@ export class PayPalReturnPage implements OnInit {
   message = signal('');
   canRetry = signal(true);
   private ordenId: string | null = null;
+  private readonly toast = inject(ToastService);
 
   constructor(private orders: OrderService, private cart: CartService, private router: Router) {}
 
@@ -88,11 +90,14 @@ export class PayPalReturnPage implements OnInit {
           sessionStorage.removeItem('paypal:ordenId');
           this.cart.clearLocal();
           this.state.set('ok');
+          this.toast.success('¡Pago realizado con éxito! Tu pedido fue confirmado.');
         } else if (estado === 'Cancelado' || estado === 'Fallido' || estado === 'Expirado') {
           sessionStorage.removeItem('paypal:ordenId');
           this.state.set('failed');
+          this.toast.error('El pago no se completó. Puedes intentarlo de nuevo.');
         } else {
           this.state.set('pending');
+          this.toast.warning('Tu pago aún no está confirmado. Puedes reintentar la verificación.');
         }
       },
       error: (e) => {
@@ -101,6 +106,7 @@ export class PayPalReturnPage implements OnInit {
           ? 'La orden expiró, no fue aprobada o ya no se puede capturar. Revisa Mis pedidos o inicia un nuevo checkout.'
           : (e?.userMessage || 'Ocurrió un error de conexión. Puedes reintentar con la misma orden.'));
         this.state.set('error');
+        this.toast.error('No pudimos verificar tu pago. Revisa Mis pedidos o reintenta.');
       },
     });
   }

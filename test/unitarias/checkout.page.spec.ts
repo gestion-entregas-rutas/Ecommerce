@@ -10,7 +10,7 @@ describe('CheckoutPage (Unit Test)', () => {
   let fixture: ComponentFixture<CheckoutPage>;
   let component: CheckoutPage;
   let cartMock: any;
-  let catalogMock: { getZonas: ReturnType<typeof vi.fn> };
+  let catalogMock: { getZonas: ReturnType<typeof vi.fn>; getZonasCobertura: ReturnType<typeof vi.fn> };
   let ordersMock: {
     checkout: ReturnType<typeof vi.fn>;
     confirmarPago: ReturnType<typeof vi.fn>;
@@ -32,6 +32,7 @@ describe('CheckoutPage (Unit Test)', () => {
     cartMock = {
       items: vi.fn().mockReturnValue(mockCartItems),
       subtotal: vi.fn().mockReturnValue(50),
+      count: vi.fn().mockReturnValue(2),
       cart: vi.fn().mockReturnValue({ items: mockCartItems, subtotal: 50, requiereRevision: false }),
       cotizacion: vi.fn().mockReturnValue(of({ items: mockCartItems, subtotal: 50 })),
       load: vi.fn().mockReturnValue(of({})),
@@ -40,6 +41,7 @@ describe('CheckoutPage (Unit Test)', () => {
 
     catalogMock = {
       getZonas: vi.fn().mockReturnValue(of([])),
+      getZonasCobertura: vi.fn().mockReturnValue(of([])),
     };
 
     ordersMock = {
@@ -81,7 +83,8 @@ describe('CheckoutPage (Unit Test)', () => {
 
   it('debe inicializarse con la modalidad de entrega provista en la URL', () => {
     expect(component.tipoEntrega).toBe('RetiroTienda');
-    expect(catalogMock.getZonas).not.toHaveBeenCalled(); // GET /api/zonas devuelve 403 al cliente; el backend valida la cobertura
+    expect(catalogMock.getZonas).not.toHaveBeenCalled(); // GET /api/zonas devuelve 403 al cliente
+    expect(catalogMock.getZonasCobertura).toHaveBeenCalled(); // zonas activas vía endpoint público
   });
 
   it('setTipo() debe alternar entre RetiroTienda y Domicilio', () => {

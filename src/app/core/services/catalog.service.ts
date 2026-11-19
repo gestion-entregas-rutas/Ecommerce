@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, map, shareReplay, timeout } from 'rxjs';
+import { Observable, map, shareReplay } from 'rxjs';
+import { timeoutEs } from '../errors/error-messages';
 import { environment } from '../../../environments/environment';
 import { Categoria, PaginaDto, Producto, ProductoListParams, ResenaProducto, Subcategoria } from '../models/api.models';
 
@@ -13,7 +14,7 @@ export class CatalogService {
   getCategorias(): Observable<Categoria[]> {
     if (!this.categorias$) {
       this.categorias$ = this.http.get<Categoria[] | { items: Categoria[] }>(`${environment.apiBaseUrl}/categorias`).pipe(
-        timeout(12000),
+        timeoutEs(12000),
         map((res: any) => (Array.isArray(res) ? res : (res?.items ?? [])) as Categoria[]),
         // The virtual "all departments" entry is represented by no filter.
         map(categories => categories.filter(category => category.numero !== 0)),
@@ -40,15 +41,22 @@ export class CatalogService {
       if (v === undefined || v === null || v === '') return;
       httpParams = httpParams.set(k, String(v));
     });
-    return this.http.get<PaginaDto<Producto>>(`${environment.apiBaseUrl}/productos`, { params: httpParams }).pipe(timeout(15000));
+    return this.http.get<PaginaDto<Producto>>(`${environment.apiBaseUrl}/productos`, { params: httpParams }).pipe(timeoutEs(15000));
   }
 
   getProducto(id: string) {
-    return this.http.get<Producto>(`${environment.apiBaseUrl}/productos/${id}`).pipe(timeout(12000));
+    return this.http.get<Producto>(`${environment.apiBaseUrl}/productos/${id}`).pipe(timeoutEs(12000));
   }
 
   crearResena(productoId: string, payload: { calificacion: number; comentario?: string }) {
     return this.http.post<ResenaProducto>(`${environment.apiBaseUrl}/productos/${productoId}/resenas`, payload);
+  }
+
+  /** Zonas activas con polígono; endpoint público para pintar la cobertura de entrega. */
+  getZonasCobertura() {
+    return this.http.get<any[]>(`${environment.apiBaseUrl}/zonas/cobertura`).pipe(
+      map((res: any) => Array.isArray(res) ? res : (res?.items ?? [])),
+    );
   }
 
   getZonas() {

@@ -88,14 +88,14 @@ describe('ProductDetailPage (Unit Test)', () => {
     component.cantidad = 2;
     component.addToCart();
 
-    expect(cartMock.addItem).toHaveBeenCalledWith('prod-001', 2);
+    expect(cartMock.addItem).toHaveBeenCalledWith('prod-001', 2, expect.objectContaining({ precio: expect.any(Number) }));
     expect(component.actionMsg).toContain('Producto agregado al carrito');
   });
 
   it('buyNow() debe agregar al carrito y navegar a checkout para usuario autenticado', () => {
     component.buyNow();
 
-    expect(cartMock.addItem).toHaveBeenCalledWith('prod-001', 1);
+    expect(cartMock.addItem).toHaveBeenCalledWith('prod-001', 1, expect.objectContaining({ precio: expect.any(Number) }));
     expect(router.navigate).toHaveBeenCalledWith(['/checkout'], {
       queryParams: { entrega: 'RetiroTienda' },
     });

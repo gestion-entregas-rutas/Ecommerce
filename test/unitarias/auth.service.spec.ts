@@ -62,11 +62,11 @@ describe('AuthService (Unit Test)', () => {
 
   it('debe restaurar la sesión desde el almacenamiento al inicializarse', () => {
     storageMock.get.mockReturnValue({ token: 'saved-token', usuario: mockUser });
-    const localService = new AuthService(
+    const localService = TestBed.runInInjectionContext(() => new AuthService(
       TestBed.inject(HttpClient),
       storageMock,
       routerMock as any
-    );
+    ));
 
     expect(localService.token()).toBe('saved-token');
     expect(localService.user()?.correo).toBe('test@example.com');

@@ -1,13 +1,15 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthResponse, UsuarioSesion } from '../models/api.models';
 import { StorageService } from './storage.service';
+import { ToastService } from './toast.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+  private readonly toast = inject(ToastService);
   private readonly tokenSignal = signal<string | null>(null);
   private readonly userSignal = signal<UsuarioSesion | null>(null);
 
@@ -34,14 +36,14 @@ export class AuthService {
       clave: payload.password,
     };
     return this.http.post<AuthResponse>(`${environment.apiBaseUrl}/autenticacion/login`, body).pipe(
-      tap((res) => this.setSession(res)),
+      tap((res) => { this.setSession(res); this.toast.success(`¡Bienvenido${res?.usuario?.nombreCompleto ? ', ' + res.usuario.nombreCompleto.split(' ')[0] : ''}! Iniciaste sesión correctamente.`); }),
     );
   }
 
   registroCliente(payload: { nombreCompleto: string; correo: string; telefono: string; password: string }) {
     return this.http
       .post<AuthResponse>(`${environment.apiBaseUrl}/autenticacion/registro-cliente`, payload)
-      .pipe(tap((res) => this.setSession(res)));
+      .pipe(tap((res) => { this.setSession(res); this.toast.success('Cuenta creada correctamente. ¡Bienvenido a la tienda!'); }));
   }
 
   me() {
@@ -60,11 +62,14 @@ export class AuthService {
       this.http.post(`${environment.apiBaseUrl}/autenticacion/logout`, {}).subscribe({ error: () => {} });
     }
     this.clearSession();
+    this.toast.info('Cerraste sesión correctamente.');
     if (redirect) this.router.navigateByUrl('/login');
   }
 
   handleUnauthorized(returnUrl?: string) {
+    const teniaSesion = !!this.tokenSignal();
     this.clearSession();
+    if (teniaSesion) this.toast.warning('Tu sesión expiró. Inicia sesión nuevamente para continuar.');
     const url = returnUrl ? `/login?returnUrl=${encodeURIComponent(returnUrl)}` : '/login';
     this.router.navigateByUrl(url);
   }
