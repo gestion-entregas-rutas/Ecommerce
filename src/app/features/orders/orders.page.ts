@@ -219,7 +219,11 @@ export class OrdersPage implements OnInit {
   load() {
     this.loading.set(true); this.error.set('');
     this.orders.misOrdenes().subscribe({
-      next: (res: any) => { this.ordenes.set(Array.isArray(res) ? res : (res?.items ?? [])); this.loading.set(false); },
+      next: (res: any) => {
+        const lista: OrdenResumen[] = Array.isArray(res) ? res : (res?.items ?? []);
+        this.ordenes.set(lista); this.loading.set(false);
+        lista.forEach((o) => this.cargarDetalle(o.ordenId));
+      },
       error: (e) => { this.error.set(e?.userMessage || 'No pudimos cargar tus pedidos.'); this.loading.set(false); },
     });
   }
@@ -293,6 +297,11 @@ export class OrdersPage implements OnInit {
 
   /** Productos del pedido: los que devuelva la API o la copia guardada al hacer el checkout. */
   lineas(o: OrdenResumen): LineaPedido[] {
+    const d = this.detalles()[o.ordenId];
+    if (d?.items) {
+      const local = this.orders.detalleLocal?.(o.ordenId) ?? [];
+      return d.items.map((i) => ({ nombre: i.nombreProducto, cantidad: i.cantidad, precio: i.precioUnitario, subtotal: i.subtotal, imagenUrl: local.find((l) => l.productoId === i.productoId)?.imagenUrl }));
+    }
     if (o.items?.length) {
       return o.items.map((i) => {
         const precio = i.precioAplicado ?? i.precioUnitario ?? i.precioOferta ?? i.precioBase ?? 0;
@@ -302,6 +311,7 @@ export class OrdersPage implements OnInit {
     const local = this.orders.detalleLocal?.(o.ordenId) ?? [];
     return local.map((i) => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio, subtotal: i.precio * i.cantidad, imagenUrl: i.imagenUrl }));
   }
+  detalleDe(o: OrdenResumen) { return this.detalles()[o.ordenId]; }
   unidades(o: OrdenResumen) { return this.lineas(o).reduce((a, l) => a + l.cantidad, 0); }
 
   grupo(o: OrdenResumen): FiltroEstado {
