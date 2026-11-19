@@ -11,8 +11,8 @@ import { RouterLink } from '@angular/router';
       <h1 class="font-title-md text-status-in-transit">Pago cancelado</h1>
       <p class="font-body-sm text-on-surface-variant mt-2">No se confirmó ningún pago en PayPal. Tu orden pendiente expirará y liberará la reserva automáticamente.</p>
       <div class="mt-6 flex flex-wrap justify-center gap-2">
-        <a routerLink="/checkout" class="btn-primary">Volver al checkout</a>
-        <a routerLink="/productos" class="btn-ghost">Seguir comprando</a>
+        <a routerLink="/mis-pedidos" class="btn-primary">Completar el pago en Mis pedidos</a>
+        <a routerLink="/carrito" class="btn-ghost">Volver al carrito</a>
       </div>
     </div>
   </section>

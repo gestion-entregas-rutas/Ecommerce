@@ -1,8 +1,9 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { paypalRetornoGuard } from './core/guards/paypal-retorno.guard';
 
 export const routes: Routes = [
-  { path: '', loadComponent: () => import('./features/catalog/catalog.page').then((m) => m.CatalogPage) },
+  { path: '', canActivate: [paypalRetornoGuard], loadComponent: () => import('./features/catalog/catalog.page').then((m) => m.CatalogPage) },
   { path: 'productos', loadComponent: () => import('./features/catalog/catalog.page').then((m) => m.CatalogPage) },
   { path: 'producto/:id', loadComponent: () => import('./features/product/product-detail.page').then((m) => m.ProductDetailPage) },
   { path: 'carrito', loadComponent: () => import('./features/cart/cart.page').then((m) => m.CartPage) },
@@ -13,5 +14,5 @@ export const routes: Routes = [
   { path: 'mi-cuenta', canActivate: [authGuard], loadComponent: () => import('./features/account/account.page').then((m) => m.AccountPage) },
   { path: 'login', loadComponent: () => import('./features/auth/login/login.page').then((m) => m.LoginPage) },
   { path: 'registro', loadComponent: () => import('./features/auth/registro/registro.page').then((m) => m.RegistroPage) },
-  { path: '**', redirectTo: '' },
+  { path: '**', canActivate: [paypalRetornoGuard], loadComponent: () => import('./features/catalog/catalog.page').then((m) => m.CatalogPage) },
 ];
