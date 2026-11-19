@@ -188,7 +188,7 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
     this.polygons.forEach(p => p.remove()); this.polygons = [];
     this.zonas.filter(z => z?.activa !== false).forEach((z) => {
       const pts = (z.poligono || z.coordenadas || []).map((p: any) => [p.latitud ?? p.lat ?? p.latitude, p.longitud ?? p.lng ?? p.lon ?? p.longitude]);
-      if (pts.length >= 3) this.polygons.push(L.polygon(pts as any, { color: '#007aff', weight: 1, fillOpacity: 0.08 }).addTo(this.map!));
+      if (pts.length >= 3) this.polygons.push(L.polygon(pts as any, { color: '#6A1B9A', weight: 1, fillOpacity: 0.08 }).addTo(this.map!));
     });
   }
   setPoint(lat: number, lng: number) {
