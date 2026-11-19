@@ -3,8 +3,9 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { OrderService } from '../../core/services/order.service';
-import { OrdenResumen } from '../../core/models/api.models';
+import { OrdenDetalleMia, OrdenResumen } from '../../core/models/api.models';
 import { ToastService } from '../../core/services/toast.service';
+import { borrarPayPalPendiente, guardarPayPalPendiente } from '../../core/utils/paypal-pendiente';
 import { BackLinkComponent } from '../../core/ui/back-link.component';
 
 type FiltroTipo = 'todos' | 'domicilio' | 'retiro';
@@ -192,6 +193,8 @@ export class OrdersPage implements OnInit {
   tipo = signal<FiltroTipo>('todos');
   estado = signal<FiltroEstado>('todos');
   busqueda = signal('');
+  /** Detalle de cada orden (GET /ordenes/{id}/detalle): productos y datos de entrega. */
+  detalles = signal<Record<string, OrdenDetalleMia>>({});
   private readonly toast = inject(ToastService);
 
   readonly estados: { id: FiltroEstado; label: string }[] = [
@@ -228,6 +231,13 @@ export class OrdersPage implements OnInit {
     });
   }
 
+  private cargarDetalle(id: string) {
+    this.orders.detalle?.(id)?.subscribe({
+      next: (d) => this.detalles.update((m) => ({ ...m, [id]: d })),
+      error: () => { /* se usa la copia local si existe */ },
+    });
+  }
+
   /** Pedido cuyo pago se está procesando (para bloquear los botones). */
   ocupado = signal<string | null>(null);
 
@@ -238,7 +248,7 @@ export class OrdersPage implements OnInit {
       next: () => { this.ocupado.set(null); this.toast.success('¡Pago realizado con éxito! Tu pedido quedó confirmado.'); this.load(); },
       error: (e) => {
         const codigo = e?.code || e?.problem?.codigo;
-        if (codigo === 'PAYPAL_CAPTURA_REQUERIDA') { this.iniciarPayPal(o); return; }
+        if (codigo === 'PAYPAL_CAPTURA_REQUERIDA') { this.capturarOAprobar(o); return; }
         this.ocupado.set(null);
         this.toast.error(e?.userMessage || 'No pudimos confirmar el pago. Inténtalo de nuevo.');
         if (codigo === 'PAGO_NO_CONFIRMABLE') this.load();
@@ -246,15 +256,40 @@ export class OrdersPage implements OnInit {
     });
   }
 
+  /**
+   * Pedido de PayPal: si ya lo aprobaste en PayPal pero no se llegó a cobrar, se cobra ahora;
+   * si todavía no lo aprobaste, te llevamos a PayPal para hacerlo.
+   */
+  private capturarOAprobar(o: OrdenResumen) {
+    this.orders.capturarPayPal(o.ordenId).subscribe({
+      next: (r) => {
+        if (r?.estadoPago === 'Confirmado') {
+          borrarPayPalPendiente();
+          this.ocupado.set(null);
+          this.toast.success('¡Pago realizado con éxito! Tu pedido quedó confirmado.');
+          this.load();
+        } else this.iniciarPayPal(o);
+      },
+      error: (e) => {
+        const codigo = e?.code || e?.problem?.codigo;
+        if (codigo === 'PAYPAL_CAPTURA_NO_CONFIRMADA' || codigo === 'PAYPAL_ORDEN_NO_ENCONTRADA') { this.iniciarPayPal(o); return; }
+        this.ocupado.set(null);
+        this.toast.error(e?.userMessage || 'No pudimos cobrar el pago con PayPal. Inténtalo de nuevo.');
+        this.load();
+      },
+    });
+  }
+
   private iniciarPayPal(o: OrdenResumen) {
-    sessionStorage.setItem('paypal:ordenId', o.ordenId);
+    guardarPayPalPendiente(o.ordenId);
     this.toast.info('Este pedido se paga con PayPal. Te llevamos a PayPal para aprobarlo.');
     this.orders.crearOrdenPayPal(o.ordenId).subscribe({
       next: (r) => {
         if (!r?.urlAprobacion) { this.ocupado.set(null); this.toast.error('PayPal no devolvió el enlace de pago. Inténtalo de nuevo.'); return; }
+        guardarPayPalPendiente(o.ordenId, r.payPalOrderId);
         window.location.assign(r.urlAprobacion);
       },
-      error: (e) => { this.ocupado.set(null); sessionStorage.removeItem('paypal:ordenId'); this.toast.error(e?.userMessage || 'No pudimos abrir PayPal. Inténtalo de nuevo.'); },
+      error: (e) => { this.ocupado.set(null); borrarPayPalPendiente(); this.toast.error(e?.userMessage || 'No pudimos abrir PayPal. Inténtalo de nuevo.'); },
     });
   }
 

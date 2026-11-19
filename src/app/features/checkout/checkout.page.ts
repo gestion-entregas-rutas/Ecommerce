@@ -8,6 +8,7 @@ import { CatalogService } from '../../core/services/catalog.service';
 import { OrderService } from '../../core/services/order.service';
 import { BackLinkComponent } from '../../core/ui/back-link.component';
 import { ToastService } from '../../core/services/toast.service';
+import { guardarPayPalPendiente, borrarPayPalPendiente } from '../../core/utils/paypal-pendiente';
 import { configurarIconosLeaflet, iconoCasa } from '../../core/utils/leaflet-icons';
 import { AuthService } from '../../core/services/auth.service';
 import { CoverageService, puntoEnPoligono } from '../../core/services/coverage.service';
@@ -512,15 +513,16 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private iniciarPayPal(ordenId: string) {
-    sessionStorage.setItem('paypal:ordenId', ordenId);
+    guardarPayPalPendiente(ordenId);
     this.orders.crearOrdenPayPal(ordenId).subscribe({
       next: (r) => {
         if (!r?.urlAprobacion) { this.processing = false; this.cdr.markForCheck(); this.error = 'PayPal no devolvió un enlace de aprobación. Inténtalo nuevamente.'; return; }
+        guardarPayPalPendiente(ordenId, r.payPalOrderId);
         window.location.assign(r.urlAprobacion);
       },
       error: (e) => {
         this.processing = false; this.cdr.markForCheck();
-        sessionStorage.removeItem('paypal:ordenId');
+        borrarPayPalPendiente();
         this.error = e?.userMessage || 'No pudimos iniciar el pago con PayPal. Inténtalo nuevamente.'; this.toast.error(this.error);
       },
     });
