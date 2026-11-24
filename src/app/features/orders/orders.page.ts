@@ -8,6 +8,7 @@ import { OrdenDetalleMia, OrdenResumen } from '../../core/models/api.models';
 import { ToastService } from '../../core/services/toast.service';
 import { borrarPayPalPendiente, guardarPayPalPendiente } from '../../core/utils/paypal-pendiente';
 import { BackLinkComponent } from '../../core/ui/back-link.component';
+import { horaLocal, intervaloLegible, puntualidadLegible } from '../../core/utils/intervalo-entrega';
 
 type FiltroTipo = 'todos' | 'domicilio' | 'retiro';
 type FiltroEstado = 'todos' | 'pendiente' | 'curso' | 'completado' | 'cancelado';
@@ -61,7 +62,7 @@ interface LineaPedido { nombre: string; cantidad: number; precio: number; subtot
               <span class="rounded-md border border-separator-hairline-light bg-white px-2 py-0.5 font-mono text-xs text-on-surface-variant">{{d.numeroOrden || d.ordenId}}</span>
             </div>
             <h2 class="mt-2 text-xl font-bold tracking-tight text-deep">{{ statusMessage(d) }}</h2>
-            <p class="mt-1 text-sm text-on-surface-variant">{{ esRetiro(d) ? 'Retiro en tienda' : 'Entrega a domicilio' }} · Total <strong class="text-on-surface">\${{(d.total ?? 0) | number:'1.2-2'}}</strong></p>
+            <p class="mt-1 text-sm text-on-surface-variant">{{ esRetiro(d) ? 'Retiro en tienda' : 'Entrega a domicilio' }}<ng-container *ngIf="!esRetiro(d) && d.compromisoInicioEn"> · <strong class="text-on-surface">{{ horario(d) }}</strong></ng-container> · Total <strong class="text-on-surface">\${{(d.total ?? 0) | number:'1.2-2'}}</strong></p>
           </div>
         </div>
         <div *ngIf="esRetiro(d) && d.codigoRetiro" class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-center">
@@ -163,6 +164,12 @@ interface LineaPedido { nombre: string; cantidad: number; precio: number; subtot
         <ng-template #sinDetalle>
           <p class="rounded-xl bg-system-background p-3 font-body-sm text-on-surface-variant">El detalle de productos no está disponible en este dispositivo para este pedido.</p>
         </ng-template>
+
+        <div *ngIf="!esRetiro(o)" class="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl bg-system-background px-3 py-2.5 text-xs">
+          <span class="flex items-center gap-1.5 font-semibold text-on-surface"><span class="material-symbols-outlined text-[16px] text-primary">schedule</span>{{ o.compromisoInicioEn ? 'Horario: ' + horario(o) : 'Sin horario comprometido' }}</span>
+          <span *ngIf="o.compromisoInicioEn && activo(o) && grupo(o)!=='completado'" class="text-on-surface-variant">{{ o.finalizacionEstimadaEn ? 'Entrega estimada: aprox. ' + hora(o.finalizacionEstimadaEn) : 'Sin estimación' }}</span>
+          <span *ngIf="puntualidad(o) as p" class="rounded-full px-2 py-0.5 font-bold" [ngClass]="tonoPuntualidad(p.tono)">{{ p.texto }}</span>
+        </div>
 
         <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
           <p class="flex items-center gap-2 text-sm"><span class="material-symbols-outlined text-[18px] text-primary">{{ grupo(o)==='cancelado' ? 'error' : 'info' }}</span>{{ statusMessage(o) }}</p>
@@ -376,6 +383,18 @@ export class OrdersPage implements OnInit {
     if (/listo/.test(s)) return 2;
     if (/prepar|asignad|pagada|confirmado/.test(s)) return 1;
     return 0;
+  }
+
+  /** Horario comprometido; los pedidos antiguos no tienen uno y no se deriva de horaEntrega. */
+  horario(o: OrdenResumen) { return intervaloLegible(o.compromisoInicioEn, o.compromisoFinEn); }
+  hora(iso: string) { return horaLocal(iso); }
+  puntualidad(o: OrdenResumen) {
+    const p = puntualidadLegible(o.puntualidad);
+    // "Sin compromiso" y "Sin estimación" ya se explican en el texto del horario.
+    return p && p.tono !== 'neutro' ? p : null;
+  }
+  tonoPuntualidad(tono: string) {
+    return ({ ok: 'badge-green', aviso: 'badge-orange', error: 'badge-red', info: 'badge-soft-blue' } as Record<string, string>)[tono] ?? '';
   }
 
   statusMessage(o: OrdenResumen): string {
