@@ -8,6 +8,7 @@ import { Observable, catchError, throwError, timeout } from 'rxjs';
 const POR_CODIGO: Record<string, string> = {
   STOCK_AGOTADO: 'Uno de los productos se agotó o ya no hay suficientes unidades. Actualizamos tu carrito para que lo revises.',
   CONFLICTO_VERSION_PRODUCTO: 'Este producto cambió mientras lo veías. Recarga la página e inténtalo de nuevo.',
+  INTERVALO_NO_DISPONIBLE: 'El horario que elegiste acaba de ocuparse o ya pasó. Elige otro horario disponible.',
   PAGO_NO_CONFIRMABLE: 'La reserva de tu pedido expiró o ya no se puede confirmar. Inicia una nueva compra.',
   PAGO_INVALIDO: 'No pudimos validar el pago. Inténtalo de nuevo.',
   PAGO_YA_CONFIRMADO: 'Este pago ya fue confirmado, por eso no se puede cancelar.',

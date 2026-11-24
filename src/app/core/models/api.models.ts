@@ -153,6 +153,33 @@ export interface DatosDomicilio {
   fechaEntrega: string;
   horaEntrega: string;
   observaciones?: string | null;
+  /** Intervalo elegido de GET /entregas/intervalos, enviado tal como llegó. */
+  compromisoInicioEn?: string | null;
+  compromisoFinEn?: string | null;
+}
+
+/** Un intervalo de la oferta. Mostrarlo no lo reserva: el checkout lo vuelve a comprobar. */
+export interface IntervaloEntrega {
+  inicioEn: string;
+  finEn: string;
+  disponible: boolean;
+  motivo: 'Vencido' | 'SinCapacidad' | null;
+}
+
+export interface IntervalosDisponibles {
+  fecha: string;
+  zonaId: string;
+  zonaNombre: string;
+  duracionMinutos: number;
+  modeloEstimacion: string;
+  calculadoEn: string;
+  intervalos: IntervaloEntrega[];
+}
+
+/** Puntualidad calculada por el backend (no se recalcula en el navegador). */
+export interface Puntualidad {
+  estado: string;
+  retrasoMinutos: number | null;
 }
 
 export interface MetodoPagoSimulado {
@@ -190,6 +217,8 @@ export interface CheckoutResponse {
   estadoSeguimiento?: string | null;
   referenciaPago?: string;
   expiraEn?: string;
+  compromisoInicioEn?: string | null;
+  compromisoFinEn?: string | null;
 }
 
 export interface DetalleOrdenMia {
@@ -239,6 +268,10 @@ export interface OrdenResumen {
   creadaEn?: string;
   expiraEn?: string;
   items?: CarritoItem[];
+  compromisoInicioEn?: string | null;
+  compromisoFinEn?: string | null;
+  finalizacionEstimadaEn?: string | null;
+  puntualidad?: Puntualidad | null;
 }
 
 export interface Zona {

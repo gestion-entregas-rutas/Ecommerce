@@ -13,8 +13,11 @@ import { guardarPayPalPendiente, borrarPayPalPendiente } from '../../core/utils/
 import { configurarIconosLeaflet, iconoCasa } from '../../core/utils/leaflet-icons';
 import { AuthService } from '../../core/services/auth.service';
 import { CoverageService, puntoEnPoligono } from '../../core/services/coverage.service';
-import { FieldErrorComponent, FormValidator, cedula, compose, cvv, fechaNoPasada, horaEntrega, maxLen, minLen, nombrePersona, numeroTarjeta, required, telefono, vencimientoTarjeta } from '../../core/validation/form-rules';
-import { CheckoutResponse } from '../../core/models/api.models';
+import { FieldErrorComponent, FormValidator, cedula, compose, cvv, fechaNoPasada, maxLen, minLen, nombrePersona, numeroTarjeta, required, telefono, vencimientoTarjeta } from '../../core/validation/form-rules';
+import { CheckoutResponse, IntervaloEntrega, IntervalosDisponibles } from '../../core/models/api.models';
+import { DeliverySlotsService } from '../../core/services/delivery-slots.service';
+import { horaLocal, intervaloLegible, rangoHorario } from '../../core/utils/intervalo-entrega';
+import { Subject, Subscription, catchError, debounceTime, of, switchMap } from 'rxjs';
 
 @Component({
   standalone: true,
@@ -141,10 +144,35 @@ import { CheckoutResponse } from '../../core/models/api.models';
                 <app-field-error [message]="vDom.error(domicilio,'destinatarioTelefono')" /></div>
               <div class="sm:col-span-2"><label class="lbl" for="ddir"><span class="material-symbols-outlined">pin_drop</span>Dirección exacta o referencia</label><input id="ddir" [class.!border-red-500]="vDom.error(domicilio,'direccionTexto')" class="input-field" [(ngModel)]="domicilio.direccionTexto" (blur)="vDom.tocar('direccionTexto')" name="ddir" autocomplete="street-address" placeholder="Calle principal, intersección y referencia" required>
                 <app-field-error [message]="vDom.error(domicilio,'direccionTexto')" /></div>
-              <div><label class="lbl" for="dfecha"><span class="material-symbols-outlined">calendar_today</span>Fecha de entrega</label><input id="dfecha" [class.!border-red-500]="vDom.error(domicilio,'fechaEntrega')" class="input-field" type="date" [(ngModel)]="domicilio.fechaEntrega" (blur)="vDom.tocar('fechaEntrega')" name="dfecha" required>
+              <div><label class="lbl" for="dfecha"><span class="material-symbols-outlined">calendar_today</span>Fecha de entrega</label><input id="dfecha" [class.!border-red-500]="vDom.error(domicilio,'fechaEntrega')" class="input-field" type="date" [(ngModel)]="domicilio.fechaEntrega" (ngModelChange)="onFechaChange()" (blur)="vDom.tocar('fechaEntrega')" name="dfecha" required>
                 <app-field-error [message]="vDom.error(domicilio,'fechaEntrega')" /></div>
-              <div><label class="lbl" for="dhora"><span class="material-symbols-outlined">schedule</span>Hora de entrega</label><input id="dhora" [class.!border-red-500]="vDom.error(domicilio,'horaEntrega')" class="input-field" type="time" [(ngModel)]="domicilio.horaEntrega" (blur)="vDom.tocar('horaEntrega')" name="dhora" required>
-                <app-field-error [message]="vDom.error(domicilio,'horaEntrega')" /></div>
+              <div class="sm:col-span-2">
+                <span class="lbl" id="lbl-horario"><span class="material-symbols-outlined">schedule</span>Horario de entrega</span>
+                @if (!domicilio.fechaEntrega || domicilio.latitud == null) {
+                  <p class="text-xs text-on-surface-variant">Elige la fecha y marca tu ubicación en el mapa para ver los horarios disponibles.</p>
+                } @else if (!coberturaOk) {
+                  <p class="text-xs text-on-surface-variant">Marca una ubicación con cobertura para ver los horarios.</p>
+                } @else if (cargandoIntervalos) {
+                  <p class="flex items-center gap-2 text-xs text-on-surface-variant" role="status"><span class="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>Buscando horarios disponibles…</p>
+                } @else if (errorIntervalos) {
+                  <div class="flex flex-wrap items-center gap-2 text-sm text-status-urgent" role="alert">{{errorIntervalos}}
+                    <button type="button" class="text-xs font-bold text-primary underline" (click)="recargarIntervalos(true)">Reintentar</button></div>
+                } @else if (oferta && !hayDisponibles()) {
+                  <p class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">No hay horarios disponibles para esta fecha. Prueba otro día.</p>
+                }
+                @if (oferta && !cargandoIntervalos && hayDisponibles()) {
+                  <div class="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-labelledby="lbl-horario">
+                    <button *ngFor="let i of oferta.intervalos" type="button" role="radio" [attr.aria-checked]="esElegido(i)" [disabled]="!i.disponible" (click)="elegirIntervalo(i)"
+                            class="rounded-xl px-3 py-2 text-left transition-all disabled:cursor-not-allowed"
+                            [ngClass]="esElegido(i) ? 'border-2 border-primary bg-primary-fixed/60 shadow-sm' : i.disponible ? 'border border-separator-hairline-light bg-white hover:border-[#C9A0F0]' : 'border border-dashed border-slate-200 bg-slate-50 text-slate-400'">
+                      <span class="block text-sm font-bold tabular-nums">{{ rango(i) }}</span>
+                      <span *ngIf="!i.disponible" class="block text-[10px] font-semibold uppercase tracking-wide">{{ i.motivo==='Vencido' ? 'Ya pasó' : 'Sin cupo' }}</span>
+                    </button>
+                  </div>
+                  <p class="mt-2 text-[11px] text-on-surface-variant">Horarios aproximados. El horario se reserva al crear tu pedido y se mantiene mientras completas el pago.</p>
+                }
+                <app-field-error [message]="vDom.enviado && !intervalo ? 'Elige un horario de entrega.' : ''" />
+              </div>
               <div class="sm:col-span-2"><label class="lbl" for="dobs"><span class="material-symbols-outlined">edit_note</span>Instrucciones para el conductor <span class="font-normal normal-case text-on-surface-variant">(opcional)</span></label><textarea id="dobs" [class.!border-red-500]="vDom.error(domicilio,'observaciones')" class="input-field" rows="2" [(ngModel)]="domicilio.observaciones" (blur)="vDom.tocar('observaciones')" name="dobs" placeholder="Ej. Dejar con el guardia si no respondo"></textarea>
                 <app-field-error [message]="vDom.error(domicilio,'observaciones')" /></div>
             </div>
@@ -223,6 +251,8 @@ import { CheckoutResponse } from '../../core/models/api.models';
             <div><span class="text-on-surface-variant">Número:</span> <strong>{{success.numeroOrden || success.ordenId}}</strong></div>
             <div><span class="text-on-surface-variant">Estado:</span> {{ humanizar(confirmed ? 'Pagado' : cancelled ? 'Cancelado' : success.estadoOrden) }} · <span class="text-on-surface-variant">Total:</span> <span class="tabular-nums">\${{(success.totalPagado ?? success.total ?? 0) | number:'1.2-2'}}</span></div>
             <div *ngIf="success.referenciaPago"><span class="text-on-surface-variant">Referencia:</span> {{success.referenciaPago}}</div>
+            <div *ngIf="success.compromisoInicioEn"><span class="text-on-surface-variant">Entrega:</span> <strong>{{ legible(success.compromisoInicioEn, success.compromisoFinEn) }}</strong>
+              <span *ngIf="!confirmed && !cancelled && success.expiraEn && remainingSec>0" class="text-on-surface-variant"> · reservado hasta {{success.expiraEn | date:'HH:mm'}}; si no completas el pago, se liberará.</span></div>
             <div *ngIf="success.codigoRetiro"><span class="text-on-surface-variant">Código de retiro:</span> <strong>{{success.codigoRetiro}}</strong></div>
             <div *ngIf="success.pedidoLogisticoId"><span class="text-on-surface-variant">Seguimiento:</span> {{success.pedidoLogisticoId}} ({{success.estadoSeguimiento || 'Pendiente'}})</div>
             <div *ngIf="success.expiraEn"><span class="text-on-surface-variant">Expira:</span> {{success.expiraEn | date:'medium'}} <span *ngIf="remainingSec>0" class="tabular-nums">(restan {{remainingSec}}s)</span><span *ngIf="remainingSec<=0" class="font-semibold text-status-urgent"> (expirada)</span></div>
@@ -332,7 +362,6 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
     destinatarioTelefono: telefono,
     direccionTexto: compose(required('La dirección es obligatoria.'), minLen(5, 'Describe mejor la dirección (mínimo 5 caracteres).'), maxLen(250, 'La dirección no puede superar los 250 caracteres.')),
     fechaEntrega: fechaNoPasada('fecha de entrega'),
-    horaEntrega: horaEntrega((f) => f.fechaEntrega),
     observaciones: maxLen(300, 'Las observaciones no pueden superar los 300 caracteres.'),
   });
   vPago = new FormValidator<any>({
@@ -347,10 +376,41 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
   confirmKey = `confirm-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   cancelKey = `cancel-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   remainingSec = 0; timer?: any;
+  private readonly slots = inject(DeliverySlotsService);
+  oferta: IntervalosDisponibles | null = null;
+  intervalo: IntervaloEntrega | null = null;
+  cargandoIntervalos = false; errorIntervalos = '';
+  /** Espera antes de consultar para no disparar una petición por cada clic en el mapa. */
+  esperaConsultaMs = 400;
+  private readonly consultaIntervalos = new Subject<void>();
+  private subIntervalos?: Subscription;
 
   constructor(public cart: CartService, private catalog: CatalogService, private orders: OrderService, private router: Router, private route: ActivatedRoute, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
+    this.subIntervalos = this.consultaIntervalos.pipe(
+      debounceTime(this.esperaConsultaMs),
+      // switchMap cancela la consulta anterior: una respuesta vieja nunca pisa a la nueva.
+      switchMap(() => {
+        const d = this.domicilio;
+        if (this.tipoEntrega !== 'Domicilio' || !d.fechaEntrega || d.latitud == null || d.longitud == null || !this.coberturaOk) return of(undefined);
+        this.cargandoIntervalos = true; this.errorIntervalos = ''; this.cdr.markForCheck();
+        return this.slots.intervalos(d.fechaEntrega, d.latitud, d.longitud).pipe(catchError((e) => {
+          this.errorIntervalos = e?.userMessage || 'No pudimos cargar los horarios de entrega. Inténtalo nuevamente.';
+          return of(null);
+        }));
+      }),
+    ).subscribe((oferta) => {
+      this.cargandoIntervalos = false;
+      if (oferta === undefined) { this.oferta = null; this.intervalo = null; }
+      else {
+        this.oferta = oferta;
+        // Conservar la elección solo si sigue ofrecida y disponible.
+        const actual = this.intervalo;
+        this.intervalo = oferta?.intervalos.find(i => i.disponible && actual && i.inicioEn === actual.inicioEn && i.finEn === actual.finEn) ?? null;
+      }
+      this.cdr.markForCheck();
+    });
     const entrega = this.route.snapshot.queryParamMap.get('entrega');
     if (entrega === 'RetiroTienda' || entrega === 'Domicilio') this.tipoEntrega = entrega;
     // Precarga con los datos de la cuenta para que el cliente no los escriba de nuevo.
@@ -365,23 +425,42 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
     // GET /api/zonas es solo para admin; las zonas activas se leen del endpoint público /api/zonas/cobertura.
     // La validación definitiva sigue en el backend (422 si no hay cobertura).
     this.catalog.getZonasCobertura().subscribe({
-      next: (zonas) => { this.zonas = zonas ?? []; this.drawZones(); if (this.domicilio.latitud != null) this.validateCoverage(); this.cdr.markForCheck(); },
+      next: (zonas) => { this.zonas = zonas ?? []; this.drawZones(); if (this.domicilio.latitud != null) { this.validateCoverage(); this.recargarIntervalos(); } this.cdr.markForCheck(); },
       error: () => { this.zonas = []; },
     });
   }
   ngAfterViewInit() { if (this.tipoEntrega === 'Domicilio') setTimeout(() => this.initMap(), 0); }
-  ngOnDestroy() { if (this.timer) clearInterval(this.timer); this.map?.remove(); }
+  ngOnDestroy() { if (this.timer) clearInterval(this.timer); this.subIntervalos?.unsubscribe(); this.map?.remove(); }
+
+  /** Pide de nuevo la oferta. Mostrar un intervalo no lo reserva: el checkout lo vuelve a comprobar. */
+  recargarIntervalos(inmediato = false) {
+    if (inmediato) { this.cargandoIntervalos = true; this.errorIntervalos = ''; }
+    this.consultaIntervalos.next();
+  }
+  onFechaChange() { this.intervalo = null; this.oferta = null; this.recargarIntervalos(); }
+  elegirIntervalo(i: IntervaloEntrega) {
+    if (!i.disponible) return;
+    this.intervalo = i;
+    this.domicilio.horaEntrega = horaLocal(i.inicioEn); // compatibilidad; el backend la toma del intervalo
+    this.cdr.markForCheck();
+  }
+  esElegido(i: IntervaloEntrega) { return !!this.intervalo && this.intervalo.inicioEn === i.inicioEn && this.intervalo.finEn === i.finEn; }
+  hayDisponibles() { return !!this.oferta?.intervalos.some(i => i.disponible); }
+  rango(i: IntervaloEntrega) { return rangoHorario(i.inicioEn, i.finEn); }
+  legible(inicio?: string | null, fin?: string | null) { return intervaloLegible(inicio, fin); }
 
   /** Paso 1 listo: datos válidos y, si es domicilio, ubicación con cobertura. */
   pasoEntregaOk(): boolean {
     if (this.tipoEntrega === 'RetiroTienda') return this.vRetiro.esValido(this.retiro);
-    return this.vDom.esValido(this.domicilio) && this.domicilio.latitud != null && this.coberturaOk;
+    return this.vDom.esValido(this.domicilio) && this.domicilio.latitud != null && this.coberturaOk && !!this.intervalo;
   }
   resumenEntrega(): string {
     if (this.tipoEntrega === 'RetiroTienda') return 'Retiro gratis en Universidad Técnica de Ambato / Hub Metropolitano';
     const z = this.cov.zona()?.nombre;
     if (this.domicilio.latitud == null) return 'Marca tu ubicación en el mapa';
-    return this.coberturaOk ? (z ? 'Entrega a ' + z : 'Ubicación con cobertura') : 'Esa ubicación no tiene cobertura';
+    if (!this.coberturaOk) return 'Esa ubicación no tiene cobertura';
+    const base = z ? 'Entrega a ' + z : 'Ubicación con cobertura';
+    return this.intervalo ? `${base} · ${this.rango(this.intervalo)}` : base;
   }
   /** Usa la ubicación del dispositivo para marcar el punto de entrega. */
   usarGps() {
@@ -392,7 +471,7 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
       { enableHighAccuracy: true, timeout: 10000 },
     );
   }
-  setTipo(t: 'RetiroTienda' | 'Domicilio') { this.tipoEntrega = t; this.onTipoChange(); }
+  setTipo(t: 'RetiroTienda' | 'Domicilio') { this.tipoEntrega = t; this.onTipoChange(); if (t === 'Domicilio') this.recargarIntervalos(); }
   onTipoChange() { if (this.tipoEntrega === 'Domicilio') setTimeout(() => this.initMap(), 0); }
   refreshQuote() { this.cart.cotizacion().subscribe({ next: () => {}, error: () => this.cart.load().subscribe({ error: () => {} }) }); }
 
@@ -422,6 +501,7 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
     if (!this.marker) this.marker = L.marker([lat, lng], { icon: iconoCasa() }).addTo(this.map); else this.marker.setLatLng([lat, lng]);
     this.cov.fijar(lat, lng);
     this.validateCoverage();
+    this.recargarIntervalos();
   }
   validateCoverage() {
     const lat = this.domicilio.latitud, lng = this.domicilio.longitud;
@@ -455,7 +535,7 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
       if ([r.cedulaQuienRetira, r.nombreQuienRetira, r.telefonoContacto, r.fechaRetiro, r.franjaHoraria].some(vacio)) return 'Completa todos los datos de retiro: cédula, nombre, teléfono, fecha y franja horaria.';
     } else {
       const d = this.domicilio;
-      if ([d.destinatarioNombre, d.destinatarioTelefono, d.direccionTexto, d.fechaEntrega, d.horaEntrega].some(vacio)) return 'Completa los datos de entrega: destinatario, teléfono, dirección, fecha y hora.';
+      if ([d.destinatarioNombre, d.destinatarioTelefono, d.direccionTexto, d.fechaEntrega].some(vacio) || !this.intervalo) return 'Completa los datos de entrega: destinatario, teléfono, dirección, fecha y horario.';
     }
     return '';
   }
@@ -468,12 +548,23 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
     if (!okForm || !okPago) { this.error = ''; this.toast.warning('Revisa los campos marcados en rojo antes de continuar.'); this.cdr.markForCheck(); return; }
     this.error = '';
     if (this.tipoEntrega === 'Domicilio' && !this.validateCoverage()) { this.error = this.coberturaMsg; return; }
+    if (this.tipoEntrega === 'Domicilio' && !this.intervalo) { this.error = 'Elige un horario de entrega.'; this.toast.warning(this.error); this.cdr.markForCheck(); return; }
     if (!this.validateCard()) return;
     const items = this.cart.items().map(i => ({ productoId: i.productoId, cantidad: i.cantidad }));
     const metodoPago = this.pago.tipo === 'PayPal' ? { tipo: 'PayPal', titular: null, ultimos4: null, referenciaSimulada: null } : this.pago;
     const payload: any = { items, tipoEntrega: this.tipoEntrega, metodoPago, datosRetiroTienda: null, datosDomicilio: null };
     if (this.tipoEntrega === 'RetiroTienda') payload.datosRetiroTienda = this.retiro;
-    else payload.datosDomicilio = { ...this.domicilio, observaciones: this.domicilio.observaciones || '', horaEntrega: this.domicilio.horaEntrega?.length === 5 ? this.domicilio.horaEntrega + ':00' : this.domicilio.horaEntrega };
+    else {
+      const intervalo = this.intervalo!;
+      // El intervalo se envía exactamente como llegó de la oferta; el backend lo vuelve a comprobar.
+      payload.datosDomicilio = {
+        ...this.domicilio,
+        observaciones: this.domicilio.observaciones || '',
+        horaEntrega: horaLocal(intervalo.inicioEn) + ':00',
+        compromisoInicioEn: intervalo.inicioEn,
+        compromisoFinEn: intervalo.finEn,
+      };
+    }
 
     const snapshot = this.cart.items().map(i => ({ productoId: i.productoId, nombre: i.nombre || i.productoId, cantidad: i.cantidad, precio: i.precioAplicado ?? i.precioUnitario ?? i.precioOferta ?? i.precioBase ?? 0, imagenUrl: i.imagenPrincipalUrl ?? i.imagenUrl ?? null }));
     // La clave de idempotencia solo se reutiliza si el pedido es idéntico (doble clic). Si el cliente cambia
@@ -496,6 +587,10 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
           const p = e?.problem;
           this.error = `Lo sentimos, ${p?.mensaje || 'un artículo de tu bolsa acaba de agotarse o cambió su disponibilidad.'}${p?.stockDisponible != null ? ` (disponible: ${p.stockDisponible})` : ''} Actualizamos tu bolsa para que puedas continuar.`;
           this.cart.cotizacion().subscribe({ error: () => this.cart.load().subscribe({ error: () => {} }) });
+        } else if (e?.status === 409 && code === 'INTERVALO_NO_DISPONIBLE') {
+          this.error = 'El horario que elegiste acaba de ocuparse o ya pasó. Elige otro horario disponible.';
+          this.intervalo = null;
+          this.recargarIntervalos(true);
         } else if (e?.status === 403) {
           this.error = 'Tu cuenta no tiene permisos de Cliente para realizar compras.';
         } else if (e?.status === 404) {
