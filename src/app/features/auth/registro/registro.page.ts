@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgIf } from '@angular/common';
@@ -38,11 +38,11 @@ import { CartService } from '../../../core/services/cart.service';
             <app-field-error [message]="v.error(form,'password')" />
           </div>
 
-          <div *ngIf="error" class="rounded-xl border border-red-200 bg-red-50 p-3 font-body-sm text-red-700 flex gap-2">
-            <span class="material-symbols-outlined text-[18px]">error</span><span>{{error}}</span>
+          <div *ngIf="error()" class="rounded-xl border border-red-200 bg-red-50 p-3 font-body-sm text-red-700 flex gap-2">
+            <span class="material-symbols-outlined text-[18px]">error</span><span>{{error()}}</span>
           </div>
 
-          <button class="btn-primary w-full !py-3 !text-[15px]" [disabled]="loading">{{loading?'Creando cuenta...':'Crear cuenta'}}</button>
+          <button class="btn-primary w-full !py-3 !text-[15px]" [disabled]="loading()">{{loading()?'Creando cuenta...':'Crear cuenta'}}</button>
         </form>
 
         <p class="mt-6 font-body-sm text-on-surface-variant">¿Ya tienes cuenta?
@@ -61,13 +61,13 @@ export class RegistroPage {
     telefono,
     password: claveNueva,
   });
-  loading = false; error = ''; returnUrl = '/';
+  readonly loading = signal(false); readonly error = signal(''); returnUrl = '/';
   constructor(private auth: AuthService, private cart: CartService, private route: ActivatedRoute, private router: Router) {
     this.returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/';
   }
   submit() {
     if (!this.v.validar(this.form)) return;
-    this.loading = true; this.error = '';
+    this.loading.set(true); this.error.set('');
     this.auth.registroCliente(this.form).subscribe({
       next: () => {
         this.cart.mergeGuestCart().subscribe({
@@ -75,7 +75,7 @@ export class RegistroPage {
           error: () => this.router.navigateByUrl(this.returnUrl),
         });
       },
-      error: (e: any) => { this.error = e?.userMessage || 'No pudimos crear tu cuenta.'; this.loading = false; },
+      error: (e: any) => { this.error.set(e?.userMessage || 'No pudimos crear tu cuenta.'); this.loading.set(false); },
     });
   }
 }

@@ -42,8 +42,8 @@ describe('RegistroPage (Unit Test)', () => {
   it('debe inicializarse con el formulario en blanco', () => {
     expect(component.form.nombreCompleto).toBe('');
     expect(component.form.correo).toBe('');
-    expect(component.error).toBe('');
-    expect(component.loading).toBe(false);
+    expect(component.error()).toBe('');
+    expect(component.loading()).toBe(false);
   });
 
   it('submit() debe registrar cliente, fusionar carrito y redirigir', () => {
@@ -78,7 +78,7 @@ describe('RegistroPage (Unit Test)', () => {
 
     component.submit();
 
-    expect(component.error).toBe('El correo ya se encuentra registrado.');
-    expect(component.loading).toBe(false);
+    expect(component.error()).toBe('El correo ya se encuentra registrado.');
+    expect(component.loading()).toBe(false);
   });
 });
