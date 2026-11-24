@@ -30,6 +30,16 @@ if not os.environ.get("PRESENTACION_ADMIN_USUARIO"):
 if not os.environ.get("PRESENTACION_ADMIN_CLAVE"):
     os.environ["PRESENTACION_ADMIN_CLAVE"] = getpass("Contraseña administrador: ")
 
+failed = []
 for module in modules:
     print(f"\n>>> Ejecutando {module}", flush=True)
-    subprocess.run([sys.executable, "-m", module], check=True, cwd=folder)
+    result = subprocess.run([sys.executable, "-m", module], check=False, cwd=folder)
+    if result.returncode:
+        failed.append(module)
+
+if failed:
+    print("\nMódulos con error:")
+    for module in failed:
+        print(f"- {module}")
+    raise SystemExit(1)
+print("\nTodos los módulos finalizaron correctamente.")

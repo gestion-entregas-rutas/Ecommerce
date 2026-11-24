@@ -25,7 +25,7 @@ def run_store_demo(module: str, route: str, action: Callable[[Page], None] | Non
         page = browser.new_page(viewport={"width": 1440, "height": 900})
         try:
             print(f"\n=== TIENDA: {module} ===")
-            page.goto(f"{STORE_URL}{route}")
+            page.goto(f"{STORE_URL}{route}", wait_until="domcontentloaded", timeout=20000)
             time.sleep(2)
             if action:
                 action(page)
@@ -43,7 +43,7 @@ def run_store_login_demo() -> None:
         page = browser.new_page(viewport={"width": 1440, "height": 900})
         try:
             print("\n=== ECOMMERCE: inicio de sesión ===")
-            page.goto(f"{STORE_URL}/login?returnUrl=%2Fmi-cuenta")
+            page.goto(f"{STORE_URL}/login?returnUrl=%2Fmi-cuenta", wait_until="domcontentloaded", timeout=20000)
             time.sleep(2)
             page.locator('input[name="usuarioOCorreo"]').fill(username)
             page.locator('input[name="password"]').fill(password)
@@ -70,14 +70,14 @@ def run_admin_demo(module: str, route: str, action: Callable[[Page], None] | Non
         page = browser.new_page(viewport={"width": 1440, "height": 900})
         try:
             print(f"\n=== PANEL: {module} ===")
-            page.goto(f"{ADMIN_URL}/login")
+            page.goto(f"{ADMIN_URL}/login", wait_until="domcontentloaded", timeout=20000)
             time.sleep(1)
             page.locator('input[name="nombreUsuario"]').fill(username)
             page.locator('input[name="clave"]').fill(password)
             page.get_by_role("button", name="Ingresar").click()
             page.wait_for_url("**/resumen", timeout=15000)
             time.sleep(2)
-            page.goto(f"{ADMIN_URL}{route}")
+            page.goto(f"{ADMIN_URL}{route}", wait_until="domcontentloaded", timeout=20000)
             page.locator("h1").first.wait_for(timeout=15000)
             time.sleep(2)
             if action:

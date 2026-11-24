@@ -1,11 +1,11 @@
 import time
 
-from common import run_store_demo
+from common import STORE_URL, run_store_demo
 
 
 def revisar_rutas_protegidas(page):
     for route in ("/checkout", "/mis-pedidos", "/mi-cuenta"):
-        page.goto(f"http://localhost:5330{route}")
+        page.goto(f"{STORE_URL}{route}", wait_until="domcontentloaded", timeout=20000)
         time.sleep(2)
         print(route, "→", page.url)
 

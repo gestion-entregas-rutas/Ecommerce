@@ -6,7 +6,7 @@ from common import STORE_URL, run_store_demo
 def revisar_acceso(page):
     page.locator('input[name="usuarioOCorreo"]').wait_for()
     time.sleep(2)
-    page.goto(f"{STORE_URL}/registro")
+    page.goto(f"{STORE_URL}/registro", wait_until="domcontentloaded", timeout=20000)
     page.locator('input[name="nombreCompleto"]').wait_for()
     time.sleep(2)
 

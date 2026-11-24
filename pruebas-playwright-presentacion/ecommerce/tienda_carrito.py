@@ -19,7 +19,7 @@ def agregar_productos_y_revisar_carrito(page):
     if agregados == 0:
         print("No se encontraron productos disponibles para agregar. Revisa el catálogo y la API.")
         return
-    page.goto(f"{STORE_URL}/carrito")
+    page.goto(f"{STORE_URL}/carrito", wait_until="domcontentloaded", timeout=20000)
     time.sleep(3)
     vacio = page.get_by_text("Tu carrito está vacío")
     if vacio.count():

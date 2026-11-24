@@ -15,7 +15,7 @@ if __name__ == "__main__":
         browser = p.chromium.launch(headless=False)
         page = browser.new_page(viewport={"width": 1440, "height": 900})
         try:
-            page.goto(f"{ADMIN_URL}/login?returnUrl=%2Fresumen")
+            page.goto(f"{ADMIN_URL}/login?returnUrl=%2Fresumen", wait_until="domcontentloaded", timeout=20000)
             time.sleep(2)
             page.locator('input[name="nombreUsuario"]').fill(username)
             page.locator('input[name="clave"]').fill(password)
