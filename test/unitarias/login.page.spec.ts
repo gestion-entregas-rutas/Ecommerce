@@ -57,7 +57,7 @@ describe('LoginPage (Unit Test)', () => {
     });
     expect(cartMock.mergeGuestCart).toHaveBeenCalled();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/checkout');
-    expect(component.loading).toBe(true);
+    expect(component.loading()).toBe(true);
   });
 
   it('submit() debe mostrar mensaje de error si la autenticación falla', () => {
@@ -69,7 +69,7 @@ describe('LoginPage (Unit Test)', () => {
     component.password = 'wrong';
     component.submit();
 
-    expect(component.error).toBe('Credenciales inválidas');
-    expect(component.loading).toBe(false);
+    expect(component.error()).toBe('Credenciales inválidas');
+    expect(component.loading()).toBe(false);
   });
 });

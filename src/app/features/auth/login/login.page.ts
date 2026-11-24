@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgIf } from '@angular/common';
@@ -28,13 +28,13 @@ import { CartService } from '../../../core/services/cart.service';
             <app-field-error [message]="v.error(datos,'password')" />
           </div>
 
-          <div *ngIf="error" class="rounded-xl border border-red-200 bg-red-50 p-3 font-body-sm text-red-700 flex gap-2">
-            <span class="material-symbols-outlined text-[18px]">error</span><span>{{error}}</span>
+          <div *ngIf="error()" class="rounded-xl border border-red-200 bg-red-50 p-3 font-body-sm text-red-700 flex gap-2">
+            <span class="material-symbols-outlined text-[18px]">error</span><span>{{error()}}</span>
           </div>
 
-          <button class="btn-primary w-full !py-3 !text-[15px]" [disabled]="loading">
-            <span *ngIf="loading" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-            {{loading ? 'Ingresando...' : 'Ingresar'}}
+          <button class="btn-primary w-full !py-3 !text-[15px]" [disabled]="loading()">
+            <span *ngIf="loading()" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+            {{loading() ? 'Ingresando...' : 'Ingresar'}}
           </button>
         </form>
 
@@ -52,8 +52,8 @@ import { CartService } from '../../../core/services/cart.service';
 export class LoginPage {
   usuarioOCorreo = '';
   password = '';
-  loading = false;
-  error = '';
+  readonly loading = signal(false);
+  readonly error = signal('');
   v = new FormValidator<{ usuarioOCorreo: string; password: string }>({
     usuarioOCorreo: required('Escribe tu usuario o correo.'),
     password: required('Escribe tu contraseña.'),
@@ -65,7 +65,7 @@ export class LoginPage {
   }
   submit() {
     if (!this.v.validar(this.datos)) return;
-    this.loading = true; this.error = '';
+    this.loading.set(true); this.error.set('');
     this.auth.login({ usuarioOCorreo: this.usuarioOCorreo, password: this.password }).subscribe({
       next: () => {
         this.cart.mergeGuestCart().subscribe({
@@ -73,7 +73,7 @@ export class LoginPage {
           error: () => this.router.navigateByUrl(this.returnUrl),
         });
       },
-      error: (e: any) => { this.error = e?.userMessage || 'No pudimos iniciar sesión. Verifica tus datos.'; this.loading = false; },
+      error: (e: any) => { this.error.set(e?.status === 401 ? 'Usuario o contraseña incorrectos. Revisa tus datos e inténtalo de nuevo.' : (e?.userMessage || 'No pudimos iniciar sesión. Verifica tus datos.')); this.loading.set(false); },
     });
   }
 }
