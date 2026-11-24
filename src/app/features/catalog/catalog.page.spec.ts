@@ -25,7 +25,7 @@ describe('Catalog filters', () => {
       providers: [
         provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
         { provide: ActivatedRoute, useValue: { queryParamMap: params, snapshot: {} } },
-        { provide: CartService, useValue: {} },
+        { provide: CartService, useValue: { localQuantityFor: () => 0 } },
       ],
     }).compileComponents();
     vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);

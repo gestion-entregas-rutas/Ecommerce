@@ -4,7 +4,8 @@ export type ToastType = 'success' | 'error' | 'info' | 'warning';
 export interface ToastProducto { nombre: string; marca?: string | null; imagenUrl?: string | null; cantidad: number; precio: number; precioBase?: number | null; }
 export interface Toast { id: number; type: ToastType; message: string; ms: number; producto?: ToastProducto; carrito?: number; }
 
-const DURACION: Record<ToastType, number> = { success: 4500, info: 5000, warning: 6000, error: 7000 };
+// Avisos breves: lo justo para leerlos. Los errores duran un poco más porque explican qué hacer.
+const DURACION: Record<ToastType, number> = { success: 2500, info: 2500, warning: 3500, error: 4500 };
 
 /** Avisos breves (toasts) para informar al cliente de lo que acaba de pasar. */
 @Injectable({ providedIn: 'root' })
@@ -25,7 +26,7 @@ export class ToastService {
 
   /** Aviso de "agregado al carrito" con el producto y acceso directo al carrito. */
   cartAdded(producto: ToastProducto, carrito: number) {
-    this.show('success', '¡Agregado al carrito con éxito!', 6000, { producto, carrito });
+    this.show('success', '¡Agregado al carrito con éxito!', 3500, { producto, carrito });
   }
 
   success(message: string, ms?: number) { this.show('success', message, ms); }

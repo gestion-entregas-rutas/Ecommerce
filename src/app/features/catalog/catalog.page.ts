@@ -118,6 +118,7 @@ import { ToastService } from '../../core/services/toast.service';
                   <span *ngIf="p.precioOferta != null" class="rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm">Oferta</span>
                   <span *ngIf="descuento(p) as d" class="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700">-{{d}}%</span>
                   <span *ngIf="p.stock>0 && p.stock<=5" class="chip badge-orange">Últimas {{p.stock}}</span>
+                  <span *ngIf="p.stock>5" class="chip bg-white/90 text-on-surface-variant">{{p.stock}} disponibles</span>
                   <span *ngIf="p.stock<=0" class="chip badge-red">Agotado</span>
                 </div>
                 <a [routerLink]="['/producto', p.id]" class="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl bg-system-background" [attr.aria-label]="'Ver ' + p.nombre">
@@ -138,9 +139,9 @@ import { ToastService } from '../../core/services/toast.service';
                 </div>
               </div>
               <div class="p-4 pt-0">
-                <button class="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-white shadow-sm shadow-primary/20 transition-all hover:bg-deep disabled:cursor-not-allowed disabled:opacity-45" [disabled]="p.stock<=0" (click)="add(p)">
+                <button class="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-semibold text-white shadow-sm shadow-primary/20 transition-all hover:bg-deep disabled:cursor-not-allowed disabled:opacity-45" [disabled]="p.stock<=0 || enCarrito(p)>=p.stock" (click)="add(p)">
                   <span class="material-symbols-outlined text-[18px]">add_shopping_cart</span>
-                  <span>{{ p.stock>0 ? 'Agregar al carrito' : 'Sin stock' }}</span>
+                  <span>{{ p.stock<=0 ? 'Sin stock' : enCarrito(p)>=p.stock ? 'Máximo en tu carrito' : 'Agregar al carrito' }}</span>
                 </button>
               </div>
             </article>
@@ -338,5 +339,6 @@ export class CatalogPage implements OnInit, OnDestroy {
     this.router.navigate([], { relativeTo: this.route, queryParams: qp });
   }
 
+  enCarrito(p: Producto) { return this.cart.localQuantityFor(p.id); }
   add(p: Producto) { this.cart.addItem(p.id, 1, { nombre: p.nombre, marca: p.marca || p.categoriaNombre, imagenUrl: p.imagenPrincipalUrl, precio: this.precioActual(p), precioBase: p.precioOferta != null ? p.precioBase : null }).subscribe({ next: () => {}, error: (e) => { this.error = e?.userMessage || 'No se pudo agregar al carrito'; this.toast.error(this.error); } }); }
 }

@@ -80,13 +80,19 @@ import { FieldErrorComponent, FormValidator, compose, maxLen, minLen, required }
           <div class="mt-5 flex items-end gap-3 border-t border-separator-hairline-light pt-5">
             <div>
               <label class="field-label" for="cantidad">Cantidad</label>
-              <select id="cantidad" class="input-field !w-24" [(ngModel)]="cantidad" [disabled]="producto.stock<=0">
-                <option *ngFor="let n of qtyOptions()" [ngValue]="n">{{n}}</option>
-              </select>
+              <div class="inline-flex items-center rounded-xl border border-separator-hairline-light bg-white p-1" role="group" aria-label="Cantidad">
+                <button type="button" class="grid h-9 w-9 place-items-center rounded-lg hover:bg-primary-fixed disabled:opacity-40" (click)="cambiarCantidad(cantidad - 1)" [disabled]="cantidad<=1 || maxAgregable()<=0" aria-label="Quitar una unidad"><span class="material-symbols-outlined text-[18px]">remove</span></button>
+                <input id="cantidad" type="number" inputmode="numeric" min="1" [attr.max]="maxAgregable()" [value]="cantidad" (change)="cantidadEscrita($event)" (keydown.enter)="$any($event.target).blur()"
+                       class="w-12 bg-transparent text-center text-sm font-bold tabular-nums focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" [disabled]="maxAgregable()<=0">
+                <button type="button" class="grid h-9 w-9 place-items-center rounded-lg hover:bg-primary-fixed disabled:opacity-40" (click)="cambiarCantidad(cantidad + 1)" [disabled]="cantidad>=maxAgregable()" aria-label="Agregar una unidad"><span class="material-symbols-outlined text-[18px]">add</span></button>
+              </div>
             </div>
-            <button class="btn-primary flex-1" [disabled]="producto.stock<=0" (click)="addToCart()">Agregar al carrito</button>
+            <button class="btn-primary flex-1" [disabled]="maxAgregable()<=0" (click)="addToCart()">Agregar al carrito</button>
           </div>
-          <button class="btn-secondary-soft mt-2 w-full" [disabled]="producto.stock<=0" (click)="buyNow()">Comprar ahora</button>
+          <p *ngIf="producto.stock>0" class="mt-2 text-xs text-on-surface-variant">
+            {{ enCarrito() ? 'Ya tienes ' + enCarrito() + ' en tu carrito · ' : '' }}{{ maxAgregable()>0 ? 'puedes agregar hasta ' + maxAgregable() + '.' : 'Ya tienes en tu carrito todo el stock disponible.' }}
+          </p>
+          <button class="btn-secondary-soft mt-2 w-full" [disabled]="maxAgregable()<=0" (click)="buyNow()">Comprar ahora</button>
           <div *ngIf="actionErr" class="mt-3 font-body-sm text-status-urgent" role="alert">{{actionErr}}</div>
         </div>
       </section>
@@ -172,13 +178,34 @@ export class ProductDetailPage implements OnInit {
     return list.sort((a,b)=>(a.orden??0)-(b.orden??0));
   }
   precioActual() { return this.producto ? (this.producto.precioOferta ?? this.producto.precioBase) : 0; }
-  qtyOptions() { const max = Math.max(1, Math.min(10, this.producto?.stock ?? 1)); return Array.from({length: max}, (_,i)=>i+1); }
+  /** Unidades ya en el carrito: el stock disponible para agregar descuenta lo que ya tienes. */
+  enCarrito() { return this.producto ? this.cart.localQuantityFor(this.producto.id) : 0; }
+  maxAgregable() { return Math.max(0, (this.producto?.stock ?? 0) - this.enCarrito()); }
+  cantidadEscrita(ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    const pedida = Math.floor(Number(input.value));
+    this.cambiarCantidad(input.value);
+    input.value = String(this.cantidad); // corrige lo que se ve si escribió más que el stock
+    if (pedida > this.cantidad) this.toast.warning(`Solo puedes agregar ${this.cantidad} ${this.cantidad === 1 ? 'unidad' : 'unidades'} de este producto.`);
+  }
+  /** Cantidad escrita o con +/-: siempre entre 1 y lo que queda disponible. */
+  cambiarCantidad(valor: any) {
+    const max = this.maxAgregable();
+    let q = Math.floor(Number(valor));
+    if (!Number.isFinite(q) || q < 1) q = 1;
+    if (max > 0 && q > max) q = max;
+    this.cantidad = q;
+    this.cdr.markForCheck();
+  }
   addToCart(goCheckout = false) {
     if (!this.producto) return;
     this.actionMsg = ''; this.actionErr = '';
+    this.cambiarCantidad(this.cantidad);
+    if (this.maxAgregable() <= 0) { this.actionErr = 'Ya tienes en tu carrito todo el stock disponible de este producto.'; this.toast.warning(this.actionErr); return; }
     this.cart.addItem(this.producto.id, this.cantidad, { nombre: this.producto.nombre, marca: this.producto.marca || this.producto.categoriaNombre, imagenUrl: this.producto.imagenPrincipalUrl, precio: this.precioActual(), precioBase: this.producto.precioOferta != null ? this.producto.precioBase : null }).subscribe({
       next: () => {
         this.actionMsg = 'Producto agregado al carrito. Tus productos se mantendrán guardados.';
+        this.cambiarCantidad(1);
         if (goCheckout) {
           const url = '/checkout';
           const extras = { queryParams: { entrega: this.deliveryMode } };
