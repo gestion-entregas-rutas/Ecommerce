@@ -13,7 +13,7 @@ import { guardarPayPalPendiente, borrarPayPalPendiente } from '../../core/utils/
 import { configurarIconosLeaflet, iconoCasa } from '../../core/utils/leaflet-icons';
 import { AuthService } from '../../core/services/auth.service';
 import { CoverageService, puntoEnPoligono } from '../../core/services/coverage.service';
-import { FieldErrorComponent, FormValidator, cedula, compose, cvv, fechaNoPasada, maxLen, minLen, nombrePersona, numeroTarjeta, required, telefono, vencimientoTarjeta } from '../../core/validation/form-rules';
+import { FieldErrorComponent, FormValidator, cedula, compose, cvv, fechaNoPasada, hoyISO, maxLen, minLen, nombrePersona, numeroTarjeta, required, telefono, vencimientoTarjeta } from '../../core/validation/form-rules';
 import { CheckoutResponse, IntervaloEntrega, IntervalosDisponibles } from '../../core/models/api.models';
 import { DeliverySlotsService } from '../../core/services/delivery-slots.service';
 import { horaLocal, intervaloLegible, rangoHorario } from '../../core/utils/intervalo-entrega';
@@ -144,7 +144,7 @@ import { Subject, Subscription, catchError, debounceTime, of, switchMap } from '
                 <app-field-error [message]="vDom.error(domicilio,'destinatarioTelefono')" /></div>
               <div class="sm:col-span-2"><label class="lbl" for="ddir"><span class="material-symbols-outlined">pin_drop</span>Dirección exacta o referencia</label><input id="ddir" [class.!border-red-500]="vDom.error(domicilio,'direccionTexto')" class="input-field" [(ngModel)]="domicilio.direccionTexto" (blur)="vDom.tocar('direccionTexto')" name="ddir" autocomplete="street-address" placeholder="Calle principal, intersección y referencia" required>
                 <app-field-error [message]="vDom.error(domicilio,'direccionTexto')" /></div>
-              <div><label class="lbl" for="dfecha"><span class="material-symbols-outlined">calendar_today</span>Fecha de entrega</label><input id="dfecha" [class.!border-red-500]="vDom.error(domicilio,'fechaEntrega')" class="input-field" type="date" [(ngModel)]="domicilio.fechaEntrega" (ngModelChange)="onFechaChange()" (blur)="vDom.tocar('fechaEntrega')" name="dfecha" required>
+              <div><label class="lbl" for="dfecha"><span class="material-symbols-outlined">calendar_today</span>Fecha de entrega</label><input id="dfecha" [class.!border-red-500]="vDom.error(domicilio,'fechaEntrega')" class="input-field" type="date" [min]="fechaMin" [max]="fechaMax" [(ngModel)]="domicilio.fechaEntrega" (ngModelChange)="onFechaChange()" (blur)="vDom.tocar('fechaEntrega')" name="dfecha" required>
                 <app-field-error [message]="vDom.error(domicilio,'fechaEntrega')" /></div>
               <div class="sm:col-span-2">
                 <span class="lbl" id="lbl-horario"><span class="material-symbols-outlined">schedule</span>Horario de entrega</span>
@@ -158,7 +158,12 @@ import { Subject, Subscription, catchError, debounceTime, of, switchMap } from '
                   <div class="flex flex-wrap items-center gap-2 text-sm text-status-urgent" role="alert">{{errorIntervalos}}
                     <button type="button" class="text-xs font-bold text-primary underline" (click)="recargarIntervalos(true)">Reintentar</button></div>
                 } @else if (oferta && !hayDisponibles()) {
-                  <p class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">No hay horarios disponibles para esta fecha. Prueba otro día.</p>
+                  <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
+                    <span>{{ todosVencidos() ? 'Ya no quedan horarios para esta fecha.' : 'No hay horarios disponibles para esta fecha.' }}</span>
+                    @if (puedeDiaSiguiente()) {
+                      <button type="button" class="text-xs font-bold text-primary underline" (click)="diaSiguiente()">Ver el día siguiente</button>
+                    }
+                  </div>
                 }
                 @if (oferta && !cargandoIntervalos && hayDisponibles()) {
                   <div class="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-labelledby="lbl-horario">
@@ -396,7 +401,7 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
         if (this.tipoEntrega !== 'Domicilio' || !d.fechaEntrega || d.latitud == null || d.longitud == null || !this.coberturaOk) return of(undefined);
         this.cargandoIntervalos = true; this.errorIntervalos = ''; this.cdr.markForCheck();
         return this.slots.intervalos(d.fechaEntrega, d.latitud, d.longitud).pipe(catchError((e) => {
-          this.errorIntervalos = e?.userMessage || 'No pudimos cargar los horarios de entrega. Inténtalo nuevamente.';
+          this.errorIntervalos = mensajeIntervalos(e);
           return of(null);
         }));
       }),
@@ -438,6 +443,16 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
     this.consultaIntervalos.next();
   }
   onFechaChange() { this.intervalo = null; this.oferta = null; this.recargarIntervalos(); }
+  /** Rango de fechas que ofrece el servidor: desde hoy hasta 30 días (PlanificacionRutas:DiasMaximosOferta). */
+  readonly fechaMin = hoyISO();
+  readonly fechaMax = sumarDias(hoyISO(), 30);
+  todosVencidos() { return !!this.oferta?.intervalos.length && this.oferta.intervalos.every(i => i.motivo === 'Vencido'); }
+  puedeDiaSiguiente() { return !!this.domicilio.fechaEntrega && sumarDias(this.domicilio.fechaEntrega, 1) <= this.fechaMax; }
+  diaSiguiente() {
+    if (!this.puedeDiaSiguiente()) return;
+    this.domicilio.fechaEntrega = sumarDias(this.domicilio.fechaEntrega, 1);
+    this.onFechaChange();
+  }
   elegirIntervalo(i: IntervaloEntrega) {
     if (!i.disponible) return;
     this.intervalo = i;
@@ -655,4 +670,22 @@ export class CheckoutPage implements OnInit, AfterViewInit, OnDestroy {
     tick(); this.timer = setInterval(tick, 1000);
   }
   goOrders() { this.router.navigateByUrl('/mis-pedidos'); }
+}
+
+/** Suma días a una fecha yyyy-MM-dd sin pasar por UTC. */
+function sumarDias(fecha: string, dias: number): string {
+  const [y, m, d] = fecha.split('-').map(Number);
+  const f = new Date(y, m - 1, d + dias);
+  return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+}
+
+/** Mensaje para el cliente cuando no se pueden consultar horarios (sin detalles técnicos del servidor). */
+function mensajeIntervalos(e: any): string {
+  const detalle = String(e?.problem?.detail ?? e?.error?.detail ?? e?.userMessage ?? '').toLowerCase();
+  if (detalle.includes('ubicación del local') || detalle.includes('origen'))
+    return 'Por el momento no podemos calcular los horarios de entrega. Elige retiro en tienda o inténtalo más tarde.';
+  if (detalle.includes('pasado')) return 'Elige una fecha de hoy en adelante.';
+  if (detalle.includes('días adelante')) return 'Solo puedes programar entregas hasta 30 días adelante.';
+  if (detalle.includes('cobertura')) return 'Esa ubicación no tiene cobertura de entrega. Marca un punto dentro de las zonas moradas.';
+  return e?.userMessage || 'No pudimos cargar los horarios de entrega. Inténtalo nuevamente.';
 }
