@@ -11,7 +11,7 @@ describe('ProductDetailPage (Unit Test)', () => {
   let fixture: ComponentFixture<ProductDetailPage>;
   let component: ProductDetailPage;
   let catalogMock: { getProducto: ReturnType<typeof vi.fn>; crearResena: ReturnType<typeof vi.fn> };
-  let cartMock: { addItem: ReturnType<typeof vi.fn> };
+  let cartMock: { addItem: ReturnType<typeof vi.fn>; localQuantityFor: ReturnType<typeof vi.fn> };
   let authMock: {
     isAuthenticated: ReturnType<typeof vi.fn>;
     isCliente: ReturnType<typeof vi.fn>;
@@ -40,6 +40,7 @@ describe('ProductDetailPage (Unit Test)', () => {
     };
     cartMock = {
       addItem: vi.fn().mockReturnValue(of({ items: [] })),
+      localQuantityFor: vi.fn().mockReturnValue(0),
     };
     authMock = {
       isAuthenticated: vi.fn().mockReturnValue(true),

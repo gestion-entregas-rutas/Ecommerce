@@ -6,6 +6,7 @@ import { CartService } from '../../core/services/cart.service';
 import { AuthService } from '../../core/services/auth.service';
 import { CoverageService } from '../../core/services/coverage.service';
 import { BackLinkComponent } from '../../core/ui/back-link.component';
+import { ToastService } from '../../core/services/toast.service';
 
 @Component({
   standalone: true,
@@ -80,7 +81,7 @@ import { BackLinkComponent } from '../../core/ui/back-link.component';
               <div class="mt-2.5 flex flex-wrap items-center gap-3">
                 <span class="inline-flex items-center gap-1.5 text-xs font-medium" [ngClass]="item.stockDisponible===0 ? 'text-status-urgent' : 'text-on-surface-variant'">
                   <span class="h-2 w-2 rounded-full" [ngClass]="item.stockDisponible===0 ? 'bg-status-urgent' : 'bg-emerald-500'"></span>
-                  {{ item.stockDisponible===0 ? 'Se agotó mientras navegabas' : 'En stock' }}
+                  {{ item.stockDisponible===0 ? 'Se agotó mientras navegabas' : item.stockDisponible!=null ? item.stockDisponible + (item.stockDisponible===1 ? ' disponible' : ' disponibles') : 'En stock' }}
                 </span>
                 <span *ngIf="item.mensaje || item.advertencia" class="rounded-lg bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900">{{item.mensaje || item.advertencia}}</span>
               </div>
@@ -89,9 +90,13 @@ import { BackLinkComponent } from '../../core/ui/back-link.component';
             <div class="flex flex-wrap items-center justify-between gap-4 pt-1">
               <div class="inline-flex items-center rounded-full bg-primary-fixed/60 p-1 shadow-inner" role="group" aria-label="Cantidad">
                 <button class="grid h-8 w-8 place-items-center rounded-full bg-white text-on-surface transition-colors hover:bg-primary-fixed focus:outline-none" (click)="dec(item)" aria-label="Quitar una unidad"><span class="material-symbols-outlined text-[18px]">remove</span></button>
-                <span class="w-10 text-center text-sm font-bold tabular-nums">{{item.cantidad}}</span>
+                <input type="number" inputmode="numeric" min="1" [attr.max]="item.stockDisponible ?? null" [value]="item.cantidad"
+                       class="w-12 appearance-none bg-transparent text-center text-sm font-bold tabular-nums focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                       [attr.aria-label]="'Cantidad de ' + (item.nombre || 'producto')"
+                       (change)="setQty(item, $event)" (keydown.enter)="$any($event.target).blur()">
                 <button class="grid h-8 w-8 place-items-center rounded-full bg-white text-on-surface transition-colors hover:bg-primary-fixed focus:outline-none disabled:opacity-40" (click)="inc(item)" [disabled]="item.stockDisponible!=null && item.cantidad>=item.stockDisponible" aria-label="Agregar una unidad"><span class="material-symbols-outlined text-[18px]">add</span></button>
               </div>
+              <span *ngIf="item.stockDisponible!=null && item.stockDisponible>0 && item.cantidad>=item.stockDisponible" class="text-xs font-medium text-amber-700">Máximo disponible</span>
               <button class="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[13px] text-on-surface-variant transition-colors hover:bg-red-50 hover:text-status-urgent" (click)="remove(item.productoId)">
                 <span class="material-symbols-outlined text-[18px]">delete</span>Eliminar
               </button>
@@ -178,6 +183,7 @@ import { BackLinkComponent } from '../../core/ui/back-link.component';
 })
 export class CartPage implements OnInit {
   readonly cov = inject(CoverageService);
+  private readonly toast = inject(ToastService);
   message = '';
   precio(i: any): number { return i.precioAplicado ?? i.precioUnitario ?? i.precioOferta ?? i.precioBase ?? 0; }
   totalLinea(i: any): number { return i.subtotal ?? this.precio(i) * i.cantidad; }
@@ -189,6 +195,17 @@ export class CartPage implements OnInit {
   refresh() { this.cart.cotizacion().subscribe({ error: () => this.cart.load().subscribe({ error: () => {} }) }); }
   inc(item: any) { this.cart.updateItem(item.productoId, item.cantidad + 1).subscribe({ error: (e) => this.message = e?.userMessage }); }
   dec(item: any) { const q = item.cantidad - 1; if (q <= 0) return this.remove(item.productoId); this.cart.updateItem(item.productoId, q).subscribe({ error: (e) => this.message = e?.userMessage }); }
+  /** Cantidad escrita a mano: se limita a 1..stock y solo se envía si cambió. */
+  setQty(item: any, ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    const max = item.stockDisponible ?? Number.MAX_SAFE_INTEGER;
+    let q = Math.floor(Number(input.value));
+    if (!Number.isFinite(q) || q < 1) q = 1;
+    if (q > max) { q = max; this.toast.warning(`Solo hay ${max} ${max === 1 ? 'unidad disponible' : 'unidades disponibles'} de este producto.`); }
+    input.value = String(q);
+    if (q === item.cantidad || q < 1) return;
+    this.cart.updateItem(item.productoId, q).subscribe({ error: (e) => { this.message = e?.userMessage; input.value = String(item.cantidad); } });
+  }
   remove(id: string) { this.cart.removeItem(id).subscribe({ error: (e) => this.message = e?.userMessage }); }
   checkout() {
     if (!this.auth.isAuthenticated() || !this.auth.isCliente()) {
