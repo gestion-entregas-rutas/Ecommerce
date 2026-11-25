@@ -269,7 +269,7 @@ export class CatalogPage implements OnInit, OnDestroy {
   pageTitle() {
     if (this.filters.buscar) return 'Resultados de búsqueda';
     const c = this.categorias.find(x => x.id === this.filters.categoriaId);
-    return c?.nombre || 'Todos los productos';
+    return c?.nombre || 'Prueba Jenkins';
   }
   get totalPaginas() { return Math.max(1, Math.ceil(this.total / this.tamanoPagina)); }
   precioActual(p: Producto) { return p.precioOferta ?? p.precioBase; }
